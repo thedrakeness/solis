@@ -1,14 +1,17 @@
-import type { WeatherData, Unit, Tab } from '../types'
+import type { WeatherData, Unit, Tab, Location } from '../types'
 import { formatTemp, formatHour, isNightTod, todFromHour, condLabel } from '../lib/utils'
 import { Icons, CondIcon } from './Icons'
+import { LocationSearch } from './LocationSearch'
 
 interface Props {
   data: WeatherData
   unit: Unit
   onGoTab: (tab: Tab) => void
+  location?: Location
+  onSelectLocation?: (loc: Location) => void
 }
 
-export function Overview({ data, unit, onGoTab }: Props) {
+export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Props) {
   const { current, hours, days } = data
 
   const next6 = hours.slice(0, 6)
@@ -18,16 +21,23 @@ export function Overview({ data, unit, onGoTab }: Props) {
     <>
       <div className="ov-top">
         <div className="panel ov-current">
+          {location && onSelectLocation && (
+            <div className="mob-loc-inline">
+              <LocationSearch currentLocation={location} onSelect={onSelectLocation} variant="overview" />
+            </div>
+          )}
           <div className="ov-current-top">
             <div>
               <div className="ov-temp">
                 {formatTemp(current.temp, unit)}<sup>°</sup>
               </div>
               <div className="ov-cond">
-                {condLabel(current.condition)} · Feels like {formatTemp(current.feelsLike, unit)}°
+                <span className="ov-cond-label">{condLabel(current.condition)}</span>
+                <span className="ov-cond-sep"> · </span>
+                <span className="ov-cond-feels">Feels like {formatTemp(current.feelsLike, unit)}°</span>
               </div>
             </div>
-            <div className="text-[rgba(243,247,251,0.85)]">
+            <div className="ov-icon-wrap text-[rgba(243,247,251,0.85)]">
               <CondIcon cond={current.condition} size={96} night={isNightTod(todFromHour(new Date().getHours()))} />
             </div>
           </div>
@@ -35,24 +45,24 @@ export function Overview({ data, unit, onGoTab }: Props) {
 
         <div className="ov-stats">
           <div className="stat">
-            <div className="stat-label"><Icons.Wind /> Wind</div>
+            <div className="stat-label">Wind</div>
             <div className="stat-val">{current.windSpeed}<small>mph</small></div>
             <div className="stat-note">{current.windSpeed > 18 ? 'Gusty' : 'Light'} — {current.windDir}</div>
           </div>
           <div className="stat">
-            <div className="stat-label"><Icons.Drop /> Humidity</div>
+            <div className="stat-label">Humidity</div>
             <div className="stat-val">{current.humidity}<small>%</small></div>
             <div className="stat-note">{current.humidity < 40 ? 'Dry' : current.humidity < 60 ? 'Comfortable' : 'Humid'}</div>
           </div>
           <div className="stat">
-            <div className="stat-label"><Icons.Wind /> Air Quality</div>
+            <div className="stat-label">Air Quality</div>
             <div className="stat-val text-[36px]">
               {current.aqi != null ? current.aqiLabel : 'N/A'}
             </div>
             <div className="stat-note">{current.aqi != null ? `${current.aqi} AQI` : 'Unavailable'}</div>
           </div>
           <div className="stat">
-            <div className="stat-label"><Icons.Drop /> Precipitation</div>
+            <div className="stat-label">Precipitation</div>
             <div className="stat-val">{current.precipProb}<small>%</small></div>
             <div className="stat-note">Next hour</div>
           </div>

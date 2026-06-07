@@ -37,7 +37,7 @@ export function getWindDir(deg: number): string {
 export function aqiLabel(aqi: number): string {
   if (aqi <= 50) return 'Good'
   if (aqi <= 100) return 'Moderate'
-  if (aqi <= 150) return 'Unhealthy for Sensitive'
+  if (aqi <= 150) return 'Fair'
   if (aqi <= 200) return 'Unhealthy'
   return 'Hazardous'
 }

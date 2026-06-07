@@ -13,7 +13,7 @@ function blend(hex1: string, hex2: string, t: number): string {
   return `#${[r,g,bl].map(v => v.toString(16).padStart(2,'0')).join('')}`
 }
 
-export function skyGradient(tod: TOD, cond: Condition): string {
+function skyColors(tod: TOD, cond: Condition): { top: string; mid: string; bot: string } {
   let top: string, mid: string, bot: string
   switch (tod) {
     case 'dawn':      top='#2a3f6a'; mid='#c88a6e'; bot='#f0b98c'; break
@@ -33,7 +33,16 @@ export function skyGradient(tod: TOD, cond: Condition): string {
   } else if (cond === 'snow') {
     top = blend(top,'#4a5a70',0.5); mid = blend(mid,'#7a8698',0.5); bot = blend(bot,'#a8b2bf',0.5)
   }
+  return { top, mid, bot }
+}
+
+export function skyGradient(tod: TOD, cond: Condition): string {
+  const { top, mid, bot } = skyColors(tod, cond)
   return `linear-gradient(to bottom, ${top} 0%, ${mid} 55%, ${bot} 100%)`
+}
+
+export function skyTopColor(tod: TOD, cond: Condition): string {
+  return skyColors(tod, cond).top
 }
 
 export function sunPos(tod: TOD): { top: string; right: string; color: string } {

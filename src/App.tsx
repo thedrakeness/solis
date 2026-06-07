@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Tab, Unit, Location } from './types'
 import { todFromHour, isNightTod } from './lib/utils'
+import { skyTopColor } from './lib/sky'
 import { Sky } from './components/Sky'
 import { Overview } from './components/Overview'
 import { Hourly } from './components/Hourly'
@@ -82,7 +83,7 @@ export default function App() {
       {!loading && !error && weather && (
         <div className={`app${night ? ' is-night' : ''}`}>
           {/* Mobile top bar */}
-          <div className="mobile-bar">
+          <div className="mobile-bar" style={{ background: skyTopColor(tod, currentCond) }}>
             <div className="mobile-brand">SOLIS</div>
             <div className="mobile-loc-wrap">
               <LocationSearch currentLocation={location} onSelect={handleSetLocation} variant="overview" />
@@ -162,6 +163,8 @@ export default function App() {
                   data={weather}
                   unit={unit}
                   onGoTab={handleTab}
+                  location={location}
+                  onSelectLocation={handleSetLocation}
                 />
               </div>
             )}
