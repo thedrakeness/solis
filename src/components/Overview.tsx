@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import type { WeatherData, Unit, Tab, Location } from '../types'
 import { formatTemp, formatHour, isNightTod, todFromHour, condLabel } from '../lib/utils'
 import { Icons, CondIcon } from './Icons'
 import { LocationSearch } from './LocationSearch'
+import { MobileTimeScrubber } from './MobileTimeScrubber'
 
 interface Props {
   data: WeatherData
@@ -13,9 +15,24 @@ interface Props {
 
 export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Props) {
   const { current, hours, days } = data
+  const [scrubIdx, setScrubIdx] = useState<number | null>(null)
 
   const next6 = hours.slice(0, 6)
   const week = days.slice(0, 7)
+
+  const displayed = scrubIdx !== null ? {
+    ...current,
+    temp: next6[scrubIdx].temp,
+    condition: next6[scrubIdx].condition,
+    windSpeed: next6[scrubIdx].windSpeed,
+    precipProb: next6[scrubIdx].precipProb,
+  } : current
+
+  const scrubLabel = scrubIdx !== null
+    ? (scrubIdx === 0 ? 'Now' : formatHour(next6[scrubIdx].hour))
+    : null
+
+  const night = isNightTod(todFromHour(new Date().getHours()))
 
   return (
     <>
@@ -29,16 +46,19 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
           <div className="ov-current-top">
             <div>
               <div className="ov-temp">
-                {formatTemp(current.temp, unit)}<sup>°</sup>
+                {formatTemp(displayed.temp, unit)}<sup>°</sup>
               </div>
               <div className="ov-cond">
-                <span className="ov-cond-label">{condLabel(current.condition)}</span>
+                <span className="ov-cond-label">{condLabel(displayed.condition)}</span>
                 <span className="ov-cond-sep"> · </span>
-                <span className="ov-cond-feels">Feels like {formatTemp(current.feelsLike, unit)}°</span>
+                {scrubLabel
+                  ? <span className="ov-cond-feels">{scrubLabel}</span>
+                  : <span className="ov-cond-feels">Feels like {formatTemp(current.feelsLike, unit)}°</span>
+                }
               </div>
             </div>
             <div className="ov-icon-wrap text-[rgba(243,247,251,0.85)]">
-              <CondIcon cond={current.condition} size={96} night={isNightTod(todFromHour(new Date().getHours()))} />
+              <CondIcon cond={displayed.condition} size={96} night={night} />
             </div>
           </div>
         </div>
@@ -46,8 +66,8 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
         <div className="ov-stats">
           <div className="stat">
             <div className="stat-label">Wind</div>
-            <div className="stat-val">{current.windSpeed}<small>mph</small></div>
-            <div className="stat-note">{current.windSpeed > 18 ? 'Gusty' : 'Light'} — {current.windDir}</div>
+            <div className="stat-val">{displayed.windSpeed}<small>mph</small></div>
+            <div className="stat-note">{displayed.windSpeed > 18 ? 'Gusty' : 'Light'} — {current.windDir}</div>
           </div>
           <div className="stat">
             <div className="stat-label">Humidity</div>
@@ -63,13 +83,50 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
           </div>
           <div className="stat">
             <div className="stat-label">Precipitation</div>
-            <div className="stat-val">{current.precipProb}<small>%</small></div>
-            <div className="stat-note">Next hour</div>
+            <div className="stat-val">{displayed.precipProb}<small>%</small></div>
+            <div className="stat-note">{scrubLabel ? scrubLabel : 'Next hour'}</div>
           </div>
         </div>
       </div>
 
-      <div className="panel" style={{ padding: 0 }}>
+      {/* Mobile: scrubber chart + grid combined in one panel */}
+      <div className="mob-next6-combined panel">
+        <div className="mob-next6-chart-head">
+          <span className="panel-title">Next 6 Hours</span>
+        </div>
+        <MobileTimeScrubber
+          hours={next6}
+          unit={unit}
+          scrubIdx={scrubIdx}
+          onScrub={setScrubIdx}
+        />
+        <div className="mob-next6-grid-head">
+          <div>
+            <div className="panel-sub">Hour-by-hour forecast</div>
+          </div>
+          <button className="panel-link" onClick={() => onGoTab('hourly')}>
+            Hourly detail <Icons.Arrow />
+          </button>
+        </div>
+        <div className="row-tiles hours">
+          {next6.map((h, i) => {
+            const isNight = h.hour < 6 || h.hour >= 20
+            return (
+              <div key={i} className={`tile${i === 0 ? ' now' : ''}`}>
+                <div className="tile-time">{i === 0 ? 'Now' : formatHour(h.hour)}</div>
+                <div className="text-[rgba(243,247,251,0.85)]">
+                  <CondIcon cond={h.condition} size={28} night={isNight} />
+                </div>
+                <div className="tile-temp">{formatTemp(h.temp, unit)}°</div>
+                {h.precipProb > 0 && <div className="tile-precip">{h.precipProb}%</div>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Desktop: original Next 6 Hours panel */}
+      <div className="desk-next6 panel" style={{ padding: 0 }}>
         <div className="px-[22px] pt-[22px] pb-4 flex justify-between items-baseline">
           <div>
             <div className="panel-title">Next 6 Hours</div>
