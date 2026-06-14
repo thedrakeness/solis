@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { WeatherData, Unit, Tab, Location } from '../types'
-import { formatTemp, formatHour, isNightTod, todFromHour, condLabel } from '../lib/utils'
+import { formatTemp, formatHour, isNightTod, todFromHour, condLabel, describeConditions } from '../lib/utils'
 import { Icons, CondIcon } from './Icons'
 import { LocationSearch } from './LocationSearch'
 import { MobileTimeScrubber } from './MobileTimeScrubber'
@@ -32,6 +32,22 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
     ? (scrubIdx === 0 ? 'Now' : formatHour(next6[scrubIdx].hour))
     : null
 
+  // Brief conditions description, delayed by 1s while scrubbing so it
+  // only updates once the user settles on an hour.
+  const [descIdx, setDescIdx] = useState<number | null>(null)
+  useEffect(() => {
+    if (scrubIdx === null) {
+      setDescIdx(null)
+      return
+    }
+    const timer = setTimeout(() => setDescIdx(scrubIdx), 1000)
+    return () => clearTimeout(timer)
+  }, [scrubIdx])
+
+  const descSource = descIdx !== null ? next6[descIdx] : current
+  const description = describeConditions(descSource.precipProb, current.humidity, descSource.windSpeed, current.windDir)
+    ?? `Feels like ${formatTemp(current.feelsLike, unit)}°`
+
   const night = isNightTod(todFromHour(new Date().getHours()))
 
   return (
@@ -55,12 +71,20 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
                   ? <span className="ov-cond-feels">{scrubLabel}</span>
                   : <span className="ov-cond-feels">Feels like {formatTemp(current.feelsLike, unit)}°</span>
                 }
+                <span className="ov-cond-desc">{description}</span>
               </div>
             </div>
             <div className="ov-icon-wrap text-[rgba(243,247,251,0.85)]">
               <CondIcon cond={displayed.condition} size={96} night={night} />
             </div>
           </div>
+        </div>
+
+        <div className="mob-air-quality panel">
+          <span className="mob-aq-label">Air Quality</span>
+          <span className="mob-aq-value">
+            {current.aqi != null ? `${current.aqiLabel} (${current.aqi} AQI)` : 'Unavailable'}
+          </span>
         </div>
 
         <div className="ov-stats">

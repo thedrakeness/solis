@@ -82,6 +82,18 @@ export function Hourly({ data, unit }: Props) {
               {i === 0 ? 'NOW' : formatHour(h.hour).replace(' ', '')}
             </text>
           ))}
+          {chartHours.map((h, i) => {
+            if (h.precipProb <= 15) return null
+            const rx = x(i)
+            const ry = PAD_T + innerH + 1
+            return (
+              <g key={`rd${i}`} className="pixel-raindrop" style={{ animationDelay: `${(i * 0.27) % 1.6}s` }}>
+                <rect x={rx - 0.6} y={ry} width="1.2" height="1.2" style={{ fill: 'rgba(var(--accent-rgb),0.65)' }} />
+                <rect x={rx - 1.2} y={ry + 1.2} width="2.4" height="1.2" style={{ fill: 'rgba(var(--accent-rgb),0.65)' }} />
+                <rect x={rx - 0.6} y={ry + 2.4} width="1.2" height="1.2" style={{ fill: 'rgba(var(--accent-rgb),0.65)' }} />
+              </g>
+            )
+          })}
           {chartHours.map((_, i) => {
             if (i === hiIdx || i === loIdx) return null
             return (
@@ -106,7 +118,7 @@ export function Hourly({ data, unit }: Props) {
               <div className="temp">{formatTemp(h.temp, unit)}°</div>
               <div className="cond">
                 <CondIcon cond={h.condition} size={20} night={isNight} />
-                <span className="ml-2">{condDesc(h.condition)}</span>
+                <span className="ml-3">{condDesc(h.condition)}</span>
               </div>
               <div className="wind-speed text-right text-[var(--fg-dim)] text-[11px] tracking-[0.1em]">{h.windSpeed} MPH</div>
               <div className="precip">{h.precipProb}% <Icons.Drop size={12} /></div>

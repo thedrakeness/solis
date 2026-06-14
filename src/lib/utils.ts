@@ -85,3 +85,22 @@ export function monthName(date: Date): string {
 export function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v))
 }
+
+/**
+ * Apple-Weather-style brief conditions summary. Only mentions wind,
+ * humidity, and precipitation when they're notable; returns null when
+ * none of them are worth calling out.
+ */
+export function describeConditions(precipProb: number, humidity: number, windSpeed: number, windDir: string): string | null {
+  const parts: string[] = []
+  if (precipProb > 0) parts.push(`${precipProb}% chance of rain`)
+  if (humidity >= 60) parts.push(`high humidity at ${humidity}%`)
+  if (windSpeed >= 8) {
+    parts.push(windSpeed > 18 ? `gusty winds up to ${windSpeed} mph` : `winds around ${windSpeed} mph from the ${windDir}`)
+  }
+  if (parts.length === 0) return null
+  const first = parts[0][0].toUpperCase() + parts[0].slice(1)
+  if (parts.length === 1) return `${first}.`
+  if (parts.length === 2) return `${first} with ${parts[1]}.`
+  return `${first}, ${parts[1]}, and ${parts[2]}.`
+}
