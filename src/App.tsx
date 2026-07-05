@@ -8,7 +8,6 @@ import { Hourly } from './components/Hourly'
 import { FiveDay } from './components/FiveDay'
 import { Trends } from './components/Trends'
 import { LocationSearch } from './components/LocationSearch'
-import { MobileTabFab } from './components/MobileTabFab'
 import { Icons } from './components/Icons'
 import { useWeather } from './hooks/useWeather'
 import { DEFAULT_LOCATION, TABS, STORAGE_KEYS } from './constants'
@@ -136,10 +135,8 @@ export default function App() {
             </div>
           </div>
 
-          <MobileTabFab tab={tab} onTab={handleTab} />
-
           {/* Main content */}
-          <main className="main">
+          <main className={`main${tab === 'overview' ? ' main--snap' : ''}`}>
             <div className="topbar">
               <div className="flex items-center gap-4 relative">
                 <h1><span className="crumb">{tabTitle}</span></h1>

@@ -19,7 +19,7 @@ export function useWeather(location: Location, unit: Unit): UseWeatherResult {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchWeather(location, 'fahrenheit')
+      const data = await fetchWeather(location, unit === 'F' ? 'fahrenheit' : 'celsius')
       setWeather(data)
     } catch (e) {
       setError('Unable to load weather data. Check your connection and try again.')
