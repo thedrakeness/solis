@@ -99,8 +99,8 @@ export function MobileTimeScrubber({ hours, unit, scrubIdx, onScrub }: Props) {
         <path
           d={pathD}
           fill="none"
-          stroke="rgba(255,255,255,0.6)"
-          strokeWidth="1.5"
+          stroke="rgba(255,255,255,0.85)"
+          strokeWidth="4.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

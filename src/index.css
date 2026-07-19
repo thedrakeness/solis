@@ -103,10 +103,10 @@ button { font-family: inherit; }
   transition: opacity 1.4s ease, filter 1.4s ease;
 }
 .sky.night .stars               { opacity: 1; }
-.sky.night.cloudy .stars        { opacity: 0.28; filter: blur(1.8px); }
-.sky.night.rain .stars          { opacity: 0.08; }
-.sky.night.storm .stars         { opacity: 0; }
-.sky.night.snow .stars          { opacity: 0.22; filter: blur(1.2px); }
+.sky.night.cloudy .stars        { opacity: 0.58; filter: blur(1.4px); }
+.sky.night.rain .stars          { opacity: 0.22; }
+.sky.night.storm .stars         { opacity: 0.08; }
+.sky.night.snow .stars          { opacity: 0.3; filter: blur(1.2px); }
 
 .rain, .snow {
   position: absolute; inset: 0;
@@ -1458,7 +1458,6 @@ button { font-family: inherit; }
     -webkit-backdrop-filter: blur(12px);
   }
   .mob-hero-scrubber {
-    margin-top: 10px;
     padding: 14px 16px 10px;
     border-radius: 16px;
     background: rgba(4, 8, 20, 0.82);
@@ -1466,6 +1465,7 @@ button { font-family: inherit; }
     box-shadow: 0 8px 32px rgba(0,0,0,0.45);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    box-sizing: border-box;
   }
   .mob-hero-scrubber .mob-scrubber-fab-label {
     font-family: var(--mono);
@@ -1475,11 +1475,20 @@ button { font-family: inherit; }
     color: rgba(255,255,255,0.38);
     margin-bottom: 6px;
   }
+  /* Was the hero's footer; releases from the hero and pins to the top of the
+     screen once the user scrolls into the hour-by-hour card below it */
+  .mob-scrubber-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    scroll-snap-align: start;
+    margin: 0 16px 12px;
+  }
 
-  /* Hourly snap card — 88dvh so 7-day card peeks in */
+  /* Hourly snap card — no snap-align of its own; the sticky trend graph above
+     it is the section's snap point. 88dvh keeps the 7-day card peeking in. */
   .mob-snap-hourly {
     height: 88dvh;
-    scroll-snap-align: start;
     padding: 16px 16px 0;
     box-sizing: border-box;
     overflow: hidden;

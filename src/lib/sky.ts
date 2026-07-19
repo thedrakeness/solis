@@ -33,6 +33,9 @@ function skyColors(tod: TOD, cond: Condition): { top: string; mid: string; bot: 
   } else if (cond === 'snow') {
     top = blend(top,'#4a5a70',0.5); mid = blend(mid,'#7a8698',0.5); bot = blend(bot,'#a8b2bf',0.5)
   }
+  if (tod === 'night' || tod === 'dusk') {
+    top = blend(top,'#020308',0.6); mid = blend(mid,'#070d1f',0.35); bot = blend(bot,'#0f1830',0.2)
+  }
   return { top, mid, bot }
 }
 

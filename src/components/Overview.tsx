@@ -75,57 +75,63 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="mob-overview">
 
-        {/* Card 1: Current weather hero — all above the fold */}
-        <div className="mob-snap-hero">
-          {location && onSelectLocation && (
-            <div className="mob-loc-inline">
-              <LocationSearch currentLocation={location} onSelect={onSelectLocation} variant="overview" />
-            </div>
-          )}
-          <div className="mob-hero-group">
-            <div className="ov-current-top">
-              <div>
-                <div className="ov-temp">{formatTemp(displayed.temp, unit)}<sup>°</sup></div>
-                <div className="ov-cond">
-                  <span className="ov-cond-label">{condLabel(displayed.condition)}</span>
-                  <span className="ov-cond-sep"> · </span>
-                  {scrubLabel
-                    ? <span className="ov-cond-feels">{scrubLabel}</span>
-                    : <span className="ov-cond-feels">Feels like {formatTemp(current.feelsLike, unit)}°</span>
-                  }
-                  <span className="ov-cond-desc">{description}</span>
+        {/* Card 1 + sticky trend + Card 2 share a scroll group so the trend
+            graph can release from the hero footer and pin above the hourly stats */}
+        <div className="mob-hero-hourly-group">
+          <div className="mob-snap-hero">
+            {location && onSelectLocation && (
+              <div className="mob-loc-inline">
+                <LocationSearch currentLocation={location} onSelect={onSelectLocation} variant="overview" />
+              </div>
+            )}
+            <div className="mob-hero-group">
+              <div className="ov-current-top">
+                <div>
+                  <div className="ov-temp">{formatTemp(displayed.temp, unit)}<sup>°</sup></div>
+                  <div className="ov-cond">
+                    <span className="ov-cond-label">{condLabel(displayed.condition)}</span>
+                    <span className="ov-cond-sep"> · </span>
+                    {scrubLabel
+                      ? <span className="ov-cond-feels">{scrubLabel}</span>
+                      : <span className="ov-cond-feels">Feels like {formatTemp(current.feelsLike, unit)}°</span>
+                    }
+                    <span className="ov-cond-desc">{description}</span>
+                  </div>
+                </div>
+                <div className="ov-icon-wrap text-[rgba(243,247,251,0.85)]">
+                  <CondIcon cond={displayed.condition} size={96} night={night} />
                 </div>
               </div>
-              <div className="ov-icon-wrap text-[rgba(243,247,251,0.85)]">
-                <CondIcon cond={displayed.condition} size={96} night={night} />
+              <div className="mob-air-quality">
+                <span className="mob-aq-label">Air Quality</span>
+                <span className="mob-aq-value">
+                  {current.aqi != null ? `${current.aqiLabel} (${current.aqi} AQI)` : 'Unavailable'}
+                </span>
               </div>
             </div>
-            <div className="mob-air-quality">
-              <span className="mob-aq-label">Air Quality</span>
-              <span className="mob-aq-value">
-                {current.aqi != null ? `${current.aqiLabel} (${current.aqi} AQI)` : 'Unavailable'}
-              </span>
-            </div>
-            <div className="mob-hero-scrubber">
-              <div className="mob-scrubber-fab-label">Next 6 Hours</div>
-              <MobileTimeScrubber
-                hours={next6}
-                unit={unit}
-                scrubIdx={scrubIdx}
-                onScrub={setScrubIdx}
-              />
-            </div>
           </div>
-        </div>
 
-        {/* Card 2: Hour-by-hour forecast */}
-        <div className="mob-snap-hourly">
-          <div className="mob-snap-card-inner panel">
-            <div className="mob-snap-card-head">
-              <span className="panel-title">Hour by Hour</span>
-            </div>
-            <div className="row-tiles hours">
-              {hourlyTiles}
+          {/* Sticks to the top of the screen once the hero scrolls past,
+              staying visible above the hourly stats below it */}
+          <div className="mob-hero-scrubber mob-scrubber-sticky">
+            <div className="mob-scrubber-fab-label">Next 6 Hours</div>
+            <MobileTimeScrubber
+              hours={next6}
+              unit={unit}
+              scrubIdx={scrubIdx}
+              onScrub={setScrubIdx}
+            />
+          </div>
+
+          {/* Card 2: Hour-by-hour forecast */}
+          <div className="mob-snap-hourly">
+            <div className="mob-snap-card-inner panel">
+              <div className="mob-snap-card-head">
+                <span className="panel-title">Hour by Hour</span>
+              </div>
+              <div className="row-tiles hours">
+                {hourlyTiles}
+              </div>
             </div>
           </div>
         </div>
