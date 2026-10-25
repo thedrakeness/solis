@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
-import type { WeatherData, Unit, Tab, Location } from '../types'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import type { CSSProperties } from 'react'
+import type { WeatherData, Unit, Tab, Location, Condition } from '../types'
 import { formatTemp, formatHour, isNightTod, todFromHour, condLabel, describeConditions } from '../lib/utils'
 import { Icons, CondIcon } from './Icons'
 import { LocationSearch } from './LocationSearch'
 import { MobileTimeScrubber } from './MobileTimeScrubber'
+import { MobileDetailsSheet } from './MobileDetailsSheet'
 
 interface Props {
   data: WeatherData
@@ -11,11 +13,23 @@ interface Props {
   onGoTab: (tab: Tab) => void
   location?: Location
   onSelectLocation?: (loc: Location) => void
+  onScrubChange?: (preview: { condition: Condition; hour: number } | null) => void
 }
 
-export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Props) {
+export function Overview({ data, unit, onGoTab, location, onSelectLocation, onScrubChange }: Props) {
   const { current, hours, days } = data
   const [scrubIdx, setScrubIdx] = useState<number | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+
+  const scrubberRef = useRef<HTMLDivElement>(null)
+  const [scrubberH, setScrubberH] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const el = scrubberRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setScrubberH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const next6 = hours.slice(0, 6)
   const week = days.slice(0, 7)
@@ -31,6 +45,13 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
   const scrubLabel = scrubIdx !== null
     ? (scrubIdx === 0 ? 'Now' : formatHour(next6[scrubIdx].hour))
     : null
+
+  // Let the background scene preview the scrubbed hour
+  const scrubbed = scrubIdx !== null ? next6[scrubIdx] : null
+  useEffect(() => {
+    onScrubChange?.(scrubbed ? { condition: scrubbed.condition, hour: scrubbed.hour } : null)
+  }, [scrubbed?.condition, scrubbed?.hour, onScrubChange])
+  useEffect(() => () => onScrubChange?.(null), [onScrubChange])
 
   const [descIdx, setDescIdx] = useState<number | null>(null)
   useEffect(() => {
@@ -75,9 +96,12 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
       {/* ===== MOBILE LAYOUT ===== */}
       <div className="mob-overview">
 
-        {/* Card 1 + sticky trend + Card 2 share a scroll group so the trend
-            graph can release from the hero footer and pin above the hourly stats */}
-        <div className="mob-hero-hourly-group">
+        {/* Hero (with the hourly trend graph as its footer), hourly and 7-day
+            cards share one snap-scroll group */}
+        <div
+          className="mob-hero-hourly-group"
+          style={scrubberH != null ? { '--scrubber-h': `${scrubberH}px` } as CSSProperties : undefined}
+        >
           <div className="mob-snap-hero">
             {location && onSelectLocation && (
               <div className="mob-loc-inline">
@@ -95,26 +119,30 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
                       ? <span className="ov-cond-feels">{scrubLabel}</span>
                       : <span className="ov-cond-feels">Feels like {formatTemp(current.feelsLike, unit)}°</span>
                     }
-                    <span className="ov-cond-desc">{description}</span>
                   </div>
+                  <button
+                    type="button"
+                    className="mob-details-btn"
+                    onClick={() => setDetailsOpen(true)}
+                    aria-haspopup="dialog"
+                  >
+                    More details
+                  </button>
                 </div>
                 <div className="ov-icon-wrap text-[rgba(243,247,251,0.85)]">
                   <CondIcon cond={displayed.condition} size={96} night={night} />
                 </div>
               </div>
-              <div className="mob-air-quality">
-                <span className="mob-aq-label">Air Quality</span>
-                <span className="mob-aq-value">
-                  {current.aqi != null ? `${current.aqiLabel} (${current.aqi} AQI)` : 'Unavailable'}
-                </span>
-              </div>
             </div>
           </div>
 
-          {/* Sticks to the top of the screen once the hero scrolls past,
-              staying visible above the hourly stats below it */}
-          <div className="mob-hero-scrubber mob-scrubber-sticky">
-            <div className="mob-scrubber-fab-label">Next 6 Hours</div>
+          {/* Sits at the bottom of the hero on landing and scrolls away with it */}
+          <div className="mob-hero-scrubber" ref={scrubberRef}>
+            {/* While scrubbing, grows and floats above the card showing the
+                selected hour so it's clear which time the hero is previewing */}
+            <div className={`mob-trend-pill${scrubLabel ? ' scrubbing' : ''}`}>
+              {scrubLabel ?? 'Hour by Hour'}
+            </div>
             <MobileTimeScrubber
               hours={next6}
               unit={unit}
@@ -126,28 +154,30 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation }: Pr
           {/* Card 2: Hour-by-hour forecast */}
           <div className="mob-snap-hourly">
             <div className="mob-snap-card-inner panel">
-              <div className="mob-snap-card-head">
-                <span className="panel-title">Hour by Hour</span>
-              </div>
               <div className="row-tiles hours">
                 {hourlyTiles}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Card 3: 7-day */}
-        <div className="mob-snap-7day">
-          <div className="mob-snap-card-inner panel">
-            <div className="mob-snap-card-head">
-              <span className="panel-title">7 Day Forecast</span>
-            </div>
-            <div className="row-tiles days">
-              {dayTiles}
+          {/* Card 3: 7-day */}
+          <div className="mob-snap-7day">
+            <div className="mob-snap-card-inner panel">
+              <div className="row-tiles days">
+                {dayTiles}
+              </div>
             </div>
           </div>
         </div>
 
+        <MobileDetailsSheet
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          current={current}
+          displayed={displayed}
+          timeLabel={scrubLabel ?? 'Now'}
+          unit={unit}
+        />
       </div>
 
       {/* ===== DESKTOP LAYOUT ===== */}

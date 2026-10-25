@@ -107,6 +107,16 @@ export const Icons = {
       <path d="m21 21-4.35-4.35"/>
     </svg>
   ),
+  Check: ({ size = 14 }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12.5l4.5 4.5L19 7.5"/>
+    </svg>
+  ),
+  Close: ({ size = 14 }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M6 6l12 12M18 6L6 18"/>
+    </svg>
+  ),
 }
 
 export function CondIcon({ cond, size = 24, night = false }: { cond: Condition; size?: number; night?: boolean }) {

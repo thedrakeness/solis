@@ -46,6 +46,15 @@ button { font-family: inherit; }
   position: fixed; inset: 0; z-index: 0;
   transition: background 1.2s ease;
 }
+/* 3D Spline sky above the CSS sky; fades in once loaded */
+.weather-scene {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.weather-scene.ready { opacity: 1; }
+.weather-scene canvas { width: 100% !important; height: 100% !important; display: block; }
 .sky::after {
   content: "";
   position: absolute; inset: 0;
@@ -485,7 +494,6 @@ button { font-family: inherit; }
   white-space: nowrap;
 }
 .ov-cond-desc { display: none; }
-.mob-air-quality { display: none; }
 
 .ov-stats {
   display: grid;
@@ -1045,6 +1053,39 @@ button { font-family: inherit; }
   }
   .sheet-option:last-child { border-bottom: none; }
   .sheet-option:hover { color: #fff; background: rgba(255,255,255,0.04); }
+  .details-list {
+    margin: 0;
+    padding: 8px 0 40px;
+  }
+  .details-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 28px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .details-row:last-child { border-bottom: none; }
+  .details-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+  }
+  .details-value {
+    margin: 0;
+    text-align: right;
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+  }
+  .details-note {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.5);
+  }
   .sheet-option.active {
     color: #fff;
     background: rgba(var(--accent-rgb),0.08);
@@ -1121,69 +1162,103 @@ button { font-family: inherit; }
 .ov-meta-date { color: rgba(255,255,255,0.60); }
 .ov-meta-time { color: rgba(255,255,255,0.92); }
 
-/* Location search popover */
-.loc-search-popover {
+/* Location dropdown */
+.loc-chev { display: inline-flex; transition: transform .2s ease; }
+.loc-chev.open { transform: rotate(180deg); }
+.loc-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 10px);
   left: 0;
-  min-width: 280px;
-  background: rgba(8,16,28,0.97);
-  border: 1px solid rgba(255,255,255,0.18);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   z-index: 100;
-  padding: 6px;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  background: rgba(10,18,34,0.97);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  padding: 8px;
+  text-align: left;
+  font-family: 'IBM Plex Mono', monospace;
+  animation: locDropIn .16s ease-out;
+  transform-origin: top center;
 }
-.loc-search-input-wrap {
+/* The mobile trigger is centred, so centre the panel under it */
+.loc-dropdown--overview { left: 50%; translate: -50% 0; }
+@keyframes locDropIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.loc-dropdown-field {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  margin-bottom: 4px;
-  color: rgba(255,255,255,0.5);
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.55);
+  transition: border-color .15s, background .15s;
 }
-.loc-search-input {
+.loc-dropdown-field:focus-within { border-color: rgba(255,255,255,0.28); background: rgba(255,255,255,0.1); }
+.loc-dropdown-input {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
   background: transparent;
   border: none;
   outline: none;
   color: var(--fg);
   font-family: inherit;
-  font-size: 13px;
-  width: 100%;
-  letter-spacing: 0.05em;
+  /* 16px minimum stops iOS Safari zooming the page when the field is focused */
+  font-size: 16px;
+  letter-spacing: 0.02em;
 }
-.loc-search-input::placeholder { color: rgba(255,255,255,0.35); }
-.loc-search-empty {
-  padding: 10px 12px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.45);
-  letter-spacing: 0.08em;
-}
-.loc-search-popover button {
-  display: block;
-  width: 100%;
-  text-align: left;
+.loc-dropdown-input::placeholder { color: rgba(255,255,255,0.4); }
+.loc-dropdown-input::-webkit-search-cancel-button { display: none; }
+.loc-dropdown-clear {
   appearance: none;
-  background: transparent;
-  color: var(--fg-dim);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   border: 0;
-  font-size: 13px;
-  padding: 10px 12px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.8);
   cursor: pointer;
-  transition: background .1s, color .1s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.loc-search-popover button:hover { background: rgba(255,255,255,0.06); color: var(--fg); }
-.loc-search-popover button.active {
-  color: #fff;
-  background: rgba(var(--accent-rgb),0.15);
-  border-left: 2px solid var(--accent);
-  padding-left: 10px;
-  font-weight: 600;
+.loc-dropdown-body { margin-top: 6px; max-height: min(360px, 55vh); overflow-y: auto; overscroll-behavior: contain; }
+.loc-dropdown-label {
+  display: block;
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
 }
+.loc-dropdown-list { list-style: none; margin: 0; padding: 0; }
+.loc-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--fg);
+  cursor: pointer;
+  transition: background .1s;
+}
+.loc-dropdown-current .loc-dropdown-option { cursor: default; }
+.loc-dropdown-option.is-active { background: rgba(255,255,255,0.1); }
+.loc-dropdown-option svg { flex: none; color: var(--accent); }
+.loc-dropdown-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.loc-dropdown-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loc-dropdown-region { font-size: 12px; color: rgba(255,255,255,0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loc-dropdown-status { padding: 14px 12px; font-size: 13px; color: rgba(255,255,255,0.55); }
 
 /* Page transitions */
 @keyframes fadeUp {
@@ -1285,6 +1360,8 @@ button { font-family: inherit; }
   .mob-loc-inline { display: flex; justify-content: center; position: absolute; top: 20px; left: 0; right: 0; opacity: 0.8; }
   .ov-icon-wrap { order: -1; margin-top: 20px; margin-bottom: 24px; }
   .ov-icon-wrap svg { width: clamp(100px, 17vh, 170px); height: clamp(100px, 17vh, 170px); }
+  /* The 3D scene's sun/moon/clouds fill this slot; keep its space, hide the icon */
+  .scene-ready .ov-icon-wrap { visibility: hidden; }
   .ov-temp { font-size: clamp(80px, 15vh, 140px); }
   .ov-cond { position: static; white-space: normal; font-size: 20px; letter-spacing: 0.16em; text-align: center; margin-top: 24px; }
   .ov-cond-label { display: block; }
@@ -1294,31 +1371,26 @@ button { font-family: inherit; }
   .ov-meta-date { display: none; }
 
   .ov-stats { display: none; }
-  .mob-air-quality {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-top: 16px;
-    padding-top: 16px;
-    padding-bottom: 16px;
-    padding-left: 20px;
-    padding-right: 20px;
-    height: auto;
-    border-top: 2px solid rgba(255,255,255,0.14);
-    margin-bottom: 20px;
-  }
-  .mob-aq-label {
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.55);
-  }
-  .mob-aq-value {
-    font-size: 14px;
-    font-weight: 500;
+  .mob-details-btn {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    margin-top: 14px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.22);
     color: #fff;
-    letter-spacing: 0.04em;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: background 0.15s;
   }
+  .mob-details-btn:active { background: rgba(255,255,255,0.18); }
   .stat { padding: 10px 8px; }
   .stat-label { font-size: 9px; letter-spacing: 0.14em; }
   .stat-val { font-size: 36px; }
@@ -1354,6 +1426,8 @@ button { font-family: inherit; }
   }
 
   .row-tiles.hours { grid-template-columns: repeat(3, 1fr); }
+  .row-tiles.hours .tile { justify-content: center; gap: 10px; min-height: 0; padding: 18px 12px; }
+  .row-tiles.hours .tile-time { font-size: 15px; letter-spacing: 0.16em; }
   .row-tiles.days { grid-template-columns: 1fr; }
 
   .row-tiles.days .day-tile {
@@ -1404,7 +1478,6 @@ button { font-family: inherit; }
   .topbar .topbar-right { display: none; }
   .panel { padding: 16px; }
 
-  .loc-search-popover { min-width: 240px; }
 
   /* ---- Snap layout (overview tab on mobile) ---- */
   .main--snap {
@@ -1418,9 +1491,10 @@ button { font-family: inherit; }
   .mob-overview { display: block; }
   .desk-overview { display: none; }
 
-  /* Hero snap card — full viewport */
+  /* Hero snap card — shrinks to leave room for the trend graph (measured via
+     --scrubber-h) so that graph sits flush at the bottom of the landing view */
   .mob-snap-hero {
-    height: 100dvh;
+    height: calc(100dvh - var(--scrubber-h, 170px) - 12px);
     scroll-snap-align: start;
     display: flex;
     flex-direction: column;
@@ -1434,7 +1508,9 @@ button { font-family: inherit; }
     top: 20px;
     left: 0; right: 0;
     display: flex;
+    align-items: center;
     justify-content: center;
+    gap: 8px;
     opacity: 0.8;
   }
   /* Content group centered vertically in the hero */
@@ -1445,20 +1521,9 @@ button { font-family: inherit; }
     justify-content: center;
     min-height: 0;
   }
-  .mob-snap-hero .mob-air-quality {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 24px 0 0;
-    padding: 12px 18px;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.10);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
   .mob-hero-scrubber {
-    padding: 14px 16px 10px;
+    position: relative;
+    padding: 22px 16px 10px;
     border-radius: 16px;
     background: rgba(4, 8, 20, 0.82);
     border: 1px solid rgba(255,255,255,0.08);
@@ -1467,32 +1532,56 @@ button { font-family: inherit; }
     -webkit-backdrop-filter: blur(16px);
     box-sizing: border-box;
   }
-  .mob-hero-scrubber .mob-scrubber-fab-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.20em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.38);
-    margin-bottom: 6px;
+  /* Daytime: frosted clear glass so the live sky blurs through; night keeps
+     the dark glass above */
+  .app:not(.is-night) .mob-hero-scrubber {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.22);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    backdrop-filter: blur(28px) saturate(150%);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
   }
-  /* Was the hero's footer; releases from the hero and pins to the top of the
-     screen once the user scrolls into the hour-by-hour card below it */
-  .mob-scrubber-sticky {
-    position: sticky;
+  /* Section header pill — straddles the card's top border, centered; taken
+     out of flow so switching labels never reflows the hero's fitted space */
+  .mob-trend-pill {
+    position: absolute;
     top: 0;
-    z-index: 5;
-    scroll-snap-align: start;
-    margin: 0 16px 12px;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 6px 14px;
+    border-radius: 999px;
+    white-space: nowrap;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #fff;
+    background: #0b1120;
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+  .mob-trend-pill.scrubbing {
+    transform: translate(-50%, calc(-50% - 34px)) scale(1.6);
+  }
+  .app:not(.is-night) .mob-trend-pill {
+    color: #0b1120;
+    background: rgba(255,255,255,0.92);
+    border-color: rgba(255,255,255,0.6);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  }
+  .mob-hero-scrubber { margin: 0 16px 12px; }
 
-  /* Hourly snap card — no snap-align of its own; the sticky trend graph above
-     it is the section's snap point. 88dvh keeps the 7-day card peeking in. */
+  /* Hourly snap card — sized to its tiles so the 7-day card previews below */
   .mob-snap-hourly {
-    height: 88dvh;
+    scroll-snap-align: start;
     padding: 16px 16px 0;
     box-sizing: border-box;
-    overflow: hidden;
   }
+  .mob-snap-hourly .mob-snap-card-inner { height: auto; }
+  .mob-snap-hourly .row-tiles { flex: none; }
 
   /* 7-day snap card */
   .mob-snap-7day {
@@ -1508,21 +1597,9 @@ button { font-family: inherit; }
     flex-direction: column;
     overflow: hidden;
   }
-  .mob-snap-card-head {
-    flex-shrink: 0;
-    padding: 16px 0 12px;
-  }
   .mob-snap-card-inner .row-tiles {
     flex: 1;
     overflow: hidden;
   }
 
-  .mob-scrubber-fab-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.20em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.38);
-    margin-bottom: 2px;
-  }
 }

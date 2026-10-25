@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import type { Tab, Unit, Location } from './types'
+import type { Tab, Unit, Location, Condition } from './types'
 import { todFromHour, isNightTod } from './lib/utils'
 import { skyTopColor } from './lib/sky'
 import { Sky } from './components/Sky'
+import { WeatherScene } from './components/WeatherScene'
 import { Overview } from './components/Overview'
 import { Hourly } from './components/Hourly'
 import { FiveDay } from './components/FiveDay'
@@ -41,6 +42,9 @@ export default function App() {
   const tod = todFromHour(hour)
   const night = isNightTod(tod)
   const currentCond = weather?.current.condition ?? 'clear'
+  const [scrubPreview, setScrubPreview] = useState<{ condition: Condition; hour: number } | null>(null)
+  const sceneTod = scrubPreview ? todFromHour(scrubPreview.hour) : tod
+  const sceneCond = scrubPreview?.condition ?? currentCond
   const tabTitle = TABS.find(t => t.key === tab)?.label ?? ''
   const dayStr = time.toLocaleDateString([], { weekday: 'short' }).toUpperCase()
   const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -64,6 +68,7 @@ export default function App() {
   return (
     <>
       <Sky tod={tod} cond={currentCond} />
+      <WeatherScene tod={sceneTod} cond={sceneCond} />
 
       {loading && (
         <div className="center-state">
@@ -162,6 +167,7 @@ export default function App() {
                   onGoTab={handleTab}
                   location={location}
                   onSelectLocation={handleSetLocation}
+                  onScrubChange={setScrubPreview}
                 />
               </div>
             )}
