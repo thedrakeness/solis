@@ -58,7 +58,10 @@ button { font-family: inherit; }
 .sky::after {
   content: "";
   position: absolute; inset: 0;
-  background: radial-gradient(120% 80% at 50% 110%, rgba(0,0,0,0.35), transparent 60%);
+  /* Edge vignette, as in the scene, plus the original grounding shade */
+  background:
+    radial-gradient(140% 110% at 50% 42%, transparent 52%, rgba(2,4,16,0.45) 100%),
+    radial-gradient(120% 80% at 50% 110%, rgba(0,0,0,0.3), transparent 60%);
   pointer-events: none;
 }
 .stars {
@@ -186,7 +189,7 @@ button { font-family: inherit; }
   transition: opacity 1.2s ease, background 1.2s ease, top 1.2s ease, right 1.2s ease;
   pointer-events: none;
 }
-.sky.has-sun .sun-halo { opacity: 0.6; }
+.sky.has-sun .sun-halo { opacity: 0.75; }
 
 /* ---- Layout ---- */
 .app {
@@ -1601,5 +1604,33 @@ button { font-family: inherit; }
     flex: 1;
     overflow: hidden;
   }
+
+  /* Hourly + 7-day cards get the same glass as the hero trend card so the
+     tiles stay readable over a bright sky or the sun */
+  .mob-snap-card-inner.panel {
+    padding: 16px 12px 12px;
+    border-radius: 16px;
+    background-color: rgba(4, 8, 20, 0.82);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  /* Daytime: darker tint than the scrubber's clear glass — white text needs
+     the contrast when the sun sits behind the card */
+  .app:not(.is-night) .mob-snap-card-inner.panel {
+    background-color: rgba(8, 14, 30, 0.38);
+    border-color: rgba(255,255,255,0.22);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+    backdrop-filter: blur(28px) saturate(140%);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+  }
+  .mob-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 4px 12px;
+  }
+  .mob-card-head .panel-sub { font-size: 10px; letter-spacing: 0.2em; }
 
 }

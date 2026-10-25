@@ -154,6 +154,10 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
           {/* Card 2: Hour-by-hour forecast */}
           <div className="mob-snap-hourly">
             <div className="mob-snap-card-inner panel">
+              <div className="mob-card-head">
+                <div className="panel-title">Next 6 Hours</div>
+                <div className="panel-sub">Hour by hour</div>
+              </div>
               <div className="row-tiles hours">
                 {hourlyTiles}
               </div>
@@ -163,6 +167,10 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
           {/* Card 3: 7-day */}
           <div className="mob-snap-7day">
             <div className="mob-snap-card-inner panel">
+              <div className="mob-card-head">
+                <div className="panel-title">7 Day Forecast</div>
+                <div className="panel-sub">High / Low</div>
+              </div>
               <div className="row-tiles days">
                 {dayTiles}
               </div>

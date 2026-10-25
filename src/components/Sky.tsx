@@ -40,7 +40,8 @@ export function Sky({ tod, cond }: { tod: TOD; cond: Condition }) {
       <div className="sun-halo" style={{
         top: sp.top,
         right: sp.right,
-        background: `radial-gradient(closest-side, ${sp.color}, transparent 70%)`,
+        // White-gold core, warm body, ember rim — echoes the scene's shaded sun
+        background: `radial-gradient(closest-side, #fff4d6 0%, ${sp.color} 28%, ${sp.color}66 52%, rgba(255,90,40,0.18) 68%, transparent 80%)`,
       }} />
       <div className="stars" />
       <div className="rain">
