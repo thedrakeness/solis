@@ -2,6 +2,7 @@ import { Component, lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Application } from '@splinetool/runtime'
 import type { Condition, TOD } from '../types'
+import { moonIllumination, moonPhase } from '../lib/moon'
 
 const Spline = lazy(() => import('@splinetool/react-spline'))
 
@@ -18,6 +19,23 @@ function applyState(app: Application, cond: Condition, tod: TOD, duration: numbe
   if (rain) rain.visible = cond === 'rain' || cond === 'storm'
   const snow = app.findObjectByName('Snow')
   if (snow) snow.visible = cond === 'snow'
+}
+
+// The moon is a Boolean: 'Moon Core' minus 'Moon Shadow' (a huge disc hiding the
+// dark side) and 'Moon Cutter' (an ellipse that hollows out a crescent). Both
+// carry states named phase-<shadow side l|r>-<percent lit>. Booleans only
+// recompute on state changes, not when a position is set from code.
+const PHASE_STEPS = [6, 15, 25, 35, 50, 65, 75, 85, 95, 100]
+
+function applyMoonPhase(app: Application, lat: number) {
+  const phase = moonPhase()
+  const lit = moonIllumination(phase) * 100
+  const step = PHASE_STEPS.reduce((a, b) => (Math.abs(b - lit) < Math.abs(a - lit) ? b : a))
+  // Waxing moons are lit on the right in the northern hemisphere, so the shadow
+  // sits on the left; it flips when waning and south of the equator
+  const side = (phase < 0.5) === (lat >= 0) ? 'l' : 'r'
+  const state = `phase-${side}-${step}`
+  for (const name of ['Moon Shadow', 'Moon Cutter']) app.findObjectByName(name)?.transition({ to: state, duration: 0 })
 }
 
 // A failed scene load must not take the app down; the CSS sky stays visible
@@ -38,7 +56,7 @@ async function hasWebGPU() {
 }
 
 // 3D sky layered over the CSS <Sky>, which stays as the fallback while loading
-export function WeatherScene({ tod, cond }: { tod: TOD; cond: Condition }) {
+export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; lat: number }) {
   const app = useRef<Application | null>(null)
   const [ready, setReady] = useState(false)
   const [supported, setSupported] = useState(false)
@@ -58,6 +76,10 @@ export function WeatherScene({ tod, cond }: { tod: TOD; cond: Condition }) {
   useEffect(() => {
     if (app.current) applyState(app.current, cond, tod, reducedMotion() ? 0 : 1200)
   }, [cond, tod, ready])
+
+  useEffect(() => {
+    if (app.current) applyMoonPhase(app.current, lat)
+  }, [lat, ready])
 
   // Lightning flickers: bolt hidden, with brief flashes at random intervals
   useEffect(() => {

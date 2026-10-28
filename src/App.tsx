@@ -68,7 +68,7 @@ export default function App() {
   return (
     <>
       <Sky tod={tod} cond={currentCond} />
-      <WeatherScene tod={sceneTod} cond={sceneCond} />
+      <WeatherScene tod={sceneTod} cond={sceneCond} lat={location.lat} />
 
       {loading && (
         <div className="center-state">
