@@ -873,6 +873,32 @@ button { font-family: inherit; }
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Mobile loader: nested spinning glyphs */
+.glyph-loader { display: none; }
+@media (max-width: 768px) {
+  .center-state .spinner { display: none; }
+  .glyph-loader {
+    display: block;
+    width: 132px; height: 132px;
+    overflow: visible;
+    filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.45));
+  }
+}
+.glyph-loader * { fill: none; stroke: var(--highlight); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.gl-layer { transform-box: view-box; transform-origin: 0 0; animation: spin linear infinite; }
+/* Neighbouring layers alternate direction, outside in */
+.gl-arcs { animation-duration: 4s; }
+.gl-arcs circle { stroke-dasharray: 60 97.08; }
+.gl-hex { animation-duration: 8s; animation-direction: reverse; }
+.gl-oct { animation-duration: 6s; }
+.gl-square { animation-duration: 4s; animation-direction: reverse; }
+.gl-core { animation-duration: 1.6s; }
+.gl-core circle { stroke-dasharray: 20 36.55; }
+.gl-dot { fill: var(--highlight); stroke: none; }
+@media (prefers-reduced-motion: reduce) {
+  .gl-layer { animation-duration: 40s; }
+}
 .state-txt {
   font-size: 12px;
   letter-spacing: 0.3em;

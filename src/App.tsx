@@ -3,6 +3,7 @@ import type { Tab, Unit, Location, Condition } from './types'
 import { todFromHour, isNightTod } from './lib/utils'
 import { skyTopColor } from './lib/sky'
 import { Sky } from './components/Sky'
+import GlyphLoader from './components/GlyphLoader'
 import { WeatherScene } from './components/WeatherScene'
 import { Overview } from './components/Overview'
 import { Hourly } from './components/Hourly'
@@ -73,6 +74,7 @@ export default function App() {
       {loading && (
         <div className="center-state">
           <div className="spinner" />
+          <GlyphLoader />
           <div className="state-txt">Loading weather</div>
         </div>
       )}
