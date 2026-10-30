@@ -58,9 +58,9 @@ function applyState(app: Application, cond: Condition, tod: TOD, duration: numbe
   if (snow) snow.visible = cond === 'snow'
 }
 
-// The moon is a Boolean: 'Moon Core' minus 'Moon Shadow' (a ring whose round hole
-// keeps the lit side, curving the shadow's edge) and 'Moon Cutter' (an ellipse
-// that hollows out a crescent). Both
+// The moon is a Boolean: 'Moon Core' minus 'Moon Shadow' (a disc that takes a round
+// bite out of the dark side) and 'Moon Cutter' (an ellipse that hollows out a
+// crescent). Both
 // carry states named phase-<shadow side l|r>-<percent lit>. Booleans only
 // recompute on state changes, not when a position is set from code.
 const PHASE_STEPS = [6, 15, 25, 35, 50, 65, 75, 85, 95, 100]
@@ -88,7 +88,7 @@ const CAMERA_FOV = 45
 const BODIES = [
   // rigY/rigZ: the rig's resting height and depth (sun at midday, moon at night);
   // diameter: the unscaled disc in world units; fill: share of the gap it spans
-  { name: 'SunBody', rigY: 470, rigZ: -300, diameter: 96, baseScale: 2.1, fill: 0.44 },
+  { name: 'SunBody', rigY: 470, rigZ: -300, diameter: 96, baseScale: 1.9, fill: 0.4 },
   { name: 'MoonBody', rigY: 470, rigZ: -300, diameter: 104, baseScale: 2.4, fill: 0.7 },
 ]
 
