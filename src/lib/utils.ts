@@ -1,11 +1,14 @@
 import type { Condition, TOD, Unit } from '../types'
 
 export function todFromHour(hour: number): TOD {
-  if (hour >= 5 && hour < 7) return 'dawn'
-  if (hour >= 7 && hour < 10) return 'morning'
-  if (hour >= 10 && hour < 14) return 'midday'
-  if (hour >= 14 && hour < 17) return 'afternoon'
-  if (hour >= 17 && hour < 20) return 'evening'
+  if (hour >= 5 && hour < 6) return 'dawn'
+  if (hour >= 6 && hour < 7) return 'sunrise'
+  if (hour >= 7 && hour < 9) return 'morning'
+  if (hour >= 9 && hour < 11) return 'latemorning'
+  if (hour >= 11 && hour < 15) return 'midday'
+  if (hour >= 15 && hour < 17) return 'afternoon'
+  if (hour >= 17 && hour < 18) return 'golden'
+  if (hour >= 18 && hour < 20) return 'evening'
   if (hour >= 20 && hour < 21) return 'dusk'
   return 'night'
 }

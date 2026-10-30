@@ -13,18 +13,21 @@ function blend(hex1: string, hex2: string, t: number): string {
   return `#${[r,g,bl].map(v => v.toString(16).padStart(2,'0')).join('')}`
 }
 
-// Deep, saturated palette to match the Spline scene: cobalt zenith, a lit
-// horizon band, and warm magenta/ember sunsets
+// Mirrors the Sky Dome gradient in the Spline scene: pale, faded mornings that
+// deepen to cobalt at midday, then amber golden hour and ember/magenta sunsets
 function skyColors(tod: TOD, cond: Condition): { top: string; mid: string; bot: string; glow: string } {
   let top: string, mid: string, bot: string, glow: string
   switch (tod) {
-    case 'dawn':      top='#16163f'; mid='#7a3a72'; bot='#ff9459'; glow='#ff8a4c'; break
-    case 'morning':   top='#0f2a6e'; mid='#2a6ad0'; bot='#8fc0f2'; glow='#ffd6a8'; break
-    case 'midday':    top='#0b2563'; mid='#1c5fd0'; bot='#4f9bf0'; glow='#a8d4ff'; break
-    case 'afternoon': top='#0d2668'; mid='#2f62c0'; bot='#f0a868'; glow='#ffbf73'; break
-    case 'evening':   top='#150d38'; mid='#6e2468'; bot='#ff6236'; glow='#ff5a2a'; break
-    case 'dusk':      top='#060821'; mid='#25164a'; bot='#6e2a5a'; glow='#c2406a'; break
-    default:          top='#010209'; mid='#050b24'; bot='#0c1a44'; glow='#2148a0'; break
+    case 'dawn':        top='#1e2258'; mid='#6a4a80'; bot='#e8966e'; glow='#e8966e'; break
+    case 'sunrise':     top='#5478b4'; mid='#a894b0'; bot='#f2b48a'; glow='#ffc8a0'; break
+    case 'morning':     top='#6a9ad0'; mid='#94b4d6'; bot='#d8c8b4'; glow='#ffe6c8'; break
+    case 'latemorning': top='#2f6fcc'; mid='#5a98dc'; bot='#a8cbe6'; glow='#d6e8f8'; break
+    case 'midday':      top='#103ea4'; mid='#2264d4'; bot='#4a8fe0'; glow='#a8d4ff'; break
+    case 'afternoon':   top='#2558b4'; mid='#4a88d4'; bot='#a0c0dc'; glow='#dfe6e8'; break
+    case 'golden':      top='#5c7cae'; mid='#c8a080'; bot='#ffb65c'; glow='#ffc070'; break
+    case 'evening':     top='#2a1a66'; mid='#a03c84'; bot='#ff7a3c'; glow='#ff6a30'; break
+    case 'dusk':        top='#0f1038'; mid='#38205e'; bot='#8a3f78'; glow='#c2406a'; break
+    default:            top='#040618'; mid='#0a0f30'; bot='#141a4a'; glow='#2148a0'; break
   }
   if (cond === 'cloudy') {
     top = blend(top,'#2e3848',0.4); mid = blend(mid,'#4a5568',0.4); bot = blend(bot,'#66717f',0.4); glow = blend(glow,'#8a94a3',0.5)
@@ -54,11 +57,14 @@ export function skyTopColor(tod: TOD, cond: Condition): string {
 
 export function sunPos(tod: TOD): { top: string; right: string; color: string } {
   switch (tod) {
-    case 'dawn':      return { top:'55%', right:'15%', color:'#ff9a5c' }
-    case 'morning':   return { top:'25%', right:'20%', color:'#ffc46a' }
-    case 'midday':    return { top:'10%', right:'45%', color:'#ffd27a' }
-    case 'afternoon': return { top:'30%', right:'10%', color:'#ffa85a' }
-    case 'evening':   return { top:'60%', right:'8%',  color:'#ff6a3a' }
-    default:          return { top:'-40%', right:'-40%', color:'#000' }
+    case 'dawn':        return { top:'55%', right:'15%', color:'#ff9a5c' }
+    case 'sunrise':     return { top:'40%', right:'18%', color:'#ffb066' }
+    case 'morning':     return { top:'25%', right:'20%', color:'#ffc46a' }
+    case 'latemorning': return { top:'16%', right:'32%', color:'#ffcc72' }
+    case 'midday':      return { top:'10%', right:'45%', color:'#ffd27a' }
+    case 'afternoon':   return { top:'30%', right:'10%', color:'#ffa85a' }
+    case 'golden':      return { top:'45%', right:'9%',  color:'#ff9248' }
+    case 'evening':     return { top:'60%', right:'8%',  color:'#ff6a3a' }
+    default:            return { top:'-40%', right:'-40%', color:'#000' }
   }
 }

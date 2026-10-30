@@ -1,5 +1,5 @@
 export type Condition = 'clear' | 'partly' | 'cloudy' | 'rain' | 'storm' | 'snow'
-export type TOD = 'dawn' | 'morning' | 'midday' | 'afternoon' | 'evening' | 'dusk' | 'night'
+export type TOD = 'dawn' | 'sunrise' | 'morning' | 'latemorning' | 'midday' | 'afternoon' | 'golden' | 'evening' | 'dusk' | 'night'
 export type Unit = 'F' | 'C'
 export type Tab = 'overview' | 'hourly' | 'fiveday' | 'trends'
 
