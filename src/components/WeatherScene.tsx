@@ -58,8 +58,9 @@ function applyState(app: Application, cond: Condition, tod: TOD, duration: numbe
   if (snow) snow.visible = cond === 'snow'
 }
 
-// The moon is a Boolean: 'Moon Core' minus 'Moon Shadow' (a huge disc hiding the
-// dark side) and 'Moon Cutter' (an ellipse that hollows out a crescent). Both
+// The moon is a Boolean: 'Moon Core' minus 'Moon Shadow' (a ring whose round hole
+// keeps the lit side, curving the shadow's edge) and 'Moon Cutter' (an ellipse
+// that hollows out a crescent). Both
 // carry states named phase-<shadow side l|r>-<percent lit>. Booleans only
 // recompute on state changes, not when a position is set from code.
 const PHASE_STEPS = [6, 15, 25, 35, 50, 65, 75, 85, 95, 100]
