@@ -10,11 +10,11 @@ interface Props {
 }
 
 const VW = 360
-const VH = 100
+const VH = 132
 const PAD_X = 20
-const CHART_TOP = 8
-const CHART_BOTTOM = 74
-const LABEL_Y = 90
+const CHART_TOP = 10
+const CHART_BOTTOM = 102
+const LABEL_Y = 122
 
 const ACCENT = 'rgba(232,196,120,'
 
@@ -143,7 +143,7 @@ export function MobileTimeScrubber({ hours, unit, scrubIdx, onScrub }: Props) {
             y={LABEL_Y}
             textAnchor="middle"
             fill={scrubIdx === i ? `${ACCENT}0.9)` : 'rgba(255,255,255,0.38)'}
-            fontSize="8.5"
+            fontSize="10"
             fontFamily="'IBM Plex Mono',monospace"
             letterSpacing="0.04em"
           >

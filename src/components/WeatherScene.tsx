@@ -80,14 +80,16 @@ function applyMoonPhase(app: Application, lat: number) {
 }
 
 // The camera's vertical FOV is fixed while the mobile hero is laid out in CSS,
-// so no single scene position lands the moon in the same slot on every phone.
-// Instead, size and place 'MoonBody' (inside 'MoonRig') from the live layout:
-// centred between the location picker and the top of the temperature digits.
+// so no single scene position lands the sun or moon in the same slot on every
+// phone. Instead, size and place each body (inside its rig) from the live
+// layout: centred between the location picker and the top of the temperature.
 const CAMERA_FOV = 45
-const MOON_RIG_NIGHT = { y: 470, z: -300 } // MoonRig's night state
-const MOON_DIAMETER = 104 // MoonBody's unscaled glow disc, in world units
-const MOON_BASE_SCALE = 2.4
-const MOON_GAP_FILL = 0.62 // share of the gap the glow disc spans
+const BODIES = [
+  // rigY/rigZ: the rig's resting height and depth (sun at midday, moon at night);
+  // diameter: the unscaled disc in world units; fill: share of the gap it spans
+  { name: 'SunBody', rigY: 470, rigZ: -300, diameter: 96, baseScale: 2.1, fill: 0.44 },
+  { name: 'MoonBody', rigY: 470, rigZ: -300, diameter: 104, baseScale: 2.4, fill: 0.7 },
+]
 
 let measureCtx: CanvasRenderingContext2D | null = null
 
@@ -104,29 +106,31 @@ function digitTop(el: HTMLElement) {
   return contentTop + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent
 }
 
-function placeMoon(app: Application) {
-  const body = app.findObjectByName('MoonBody')
+function placeBodies(app: Application) {
   const cam = app.findObjectByName('App Camera')
-  if (!body || !cam) return
+  if (!cam) return
   const loc = document.querySelector<HTMLElement>('.mob-snap-hero .mob-loc-inline')
   const temp = document.querySelector<HTMLElement>('.mob-overview .ov-temp')
-  // Desktop: keep the scene's authored placement
-  if (!loc?.offsetHeight || !temp?.offsetHeight) {
-    body.position.y = 0
-    body.scale.x = body.scale.y = body.scale.z = MOON_BASE_SCALE
-    return
-  }
+  const mobile = !!loc?.offsetHeight && !!temp?.offsetHeight
   // Measure as if the snap scroller were at the top: the canvas is fixed, the hero scrolls
   const scrollY = document.querySelector('.main--snap')?.scrollTop ?? 0
-  const top = loc.getBoundingClientRect().bottom + scrollY
-  const bottom = digitTop(temp) + scrollY
+  const top = mobile ? loc.getBoundingClientRect().bottom + scrollY : 0
+  const bottom = mobile ? digitTop(temp) + scrollY : 0
   const h = window.innerHeight
-  const dist = cam.position.z - MOON_RIG_NIGHT.z
-  const worldPerPx = (2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * dist) / h
-  const centreY = cam.position.y + (h / 2 - (top + bottom) / 2) * worldPerPx
-  const scale = Math.max(MOON_BASE_SCALE, ((bottom - top) * MOON_GAP_FILL * worldPerPx) / MOON_DIAMETER)
-  body.position.y = centreY - MOON_RIG_NIGHT.y
-  body.scale.x = body.scale.y = body.scale.z = scale
+  for (const b of BODIES) {
+    const body = app.findObjectByName(b.name)
+    if (!body) continue
+    let y = 0
+    let scale = b.baseScale
+    // Desktop keeps the scene's authored placement
+    if (mobile) {
+      const worldPerPx = (2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (cam.position.z - b.rigZ)) / h
+      y = cam.position.y + (h / 2 - (top + bottom) / 2) * worldPerPx - b.rigY
+      scale = Math.max(b.baseScale, ((bottom - top) * b.fill * worldPerPx) / b.diameter)
+    }
+    body.position.y = y
+    body.scale.x = body.scale.y = body.scale.z = scale
+  }
 }
 
 // A failed scene load must not take the app down; the CSS sky stays visible
@@ -180,10 +184,10 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
     if (app.current) applyMoonPhase(app.current, lat)
   }, [lat, ready])
 
-  // Re-fit the moon whenever the hero's layout can shift
+  // Re-fit the sun and moon whenever the hero's layout can shift
   useEffect(() => {
     if (!ready) return
-    const fit = () => { if (app.current) placeMoon(app.current) }
+    const fit = () => { if (app.current) placeBodies(app.current) }
     const ro = new ResizeObserver(fit)
     // The hero mounts once the forecast loads and unmounts on other tabs
     let hero: Element | null = null
@@ -231,7 +235,7 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
               app.current = a
               applyState(a, cond, tod, 0)
               fadeClouds(a, cond, 0, cloudAlphas.current, cloudFrame.current)
-              placeMoon(a)
+              placeBodies(a)
               setReady(true)
             }}
           />
