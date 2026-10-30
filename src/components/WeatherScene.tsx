@@ -63,6 +63,7 @@ function applyState(app: Application, cond: Condition, tod: TOD, duration: numbe
 // carry states named phase-<shadow side l|r>-<percent lit>. Booleans only
 // recompute on state changes, not when a position is set from code.
 const PHASE_STEPS = [6, 15, 25, 35, 50, 65, 75, 85, 95, 100]
+const MOON_TILT_DEG = 30
 
 function applyMoonPhase(app: Application, lat: number) {
   const phase = moonPhase()
@@ -73,6 +74,9 @@ function applyMoonPhase(app: Application, lat: number) {
   const side = (phase < 0.5) === (lat >= 0) ? 'l' : 'r'
   const state = `phase-${side}-${step}`
   for (const name of ['Moon Shadow', 'Moon Cutter']) app.findObjectByName(name)?.transition({ to: state, duration: 0 })
+  // Tilt the disc so the dark side sits low: bottom-right when waning, bottom-left when waxing
+  const body = app.findObjectByName('MoonBody')
+  if (body) body.rotation.z = ((side === 'r' ? -1 : 1) * MOON_TILT_DEG * Math.PI) / 180
 }
 
 // The camera's vertical FOV is fixed while the mobile hero is laid out in CSS,
