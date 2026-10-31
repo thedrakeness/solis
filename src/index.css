@@ -1417,9 +1417,17 @@ button { font-family: inherit; }
     cursor: pointer;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    transition: background 0.15s;
+    transition: background 0.15s, opacity 0.2s ease;
   }
   .mob-details-btn:active { background: rgba(255,255,255,0.18); }
+  /* Clears the way for the floating time pill while scrubbing */
+  .mob-details-btn.scrub-hidden { opacity: 0; pointer-events: none; }
+  /* Keeps white hero text legible over the pale morning sky */
+  .app:not(.is-night) .mob-overview .ov-temp,
+  .app:not(.is-night) .mob-overview .ov-cond,
+  .app:not(.is-night) .mob-details-btn { text-shadow: 0 1px 14px rgba(16,24,40,0.45); }
+  .app:not(.is-night) .mob-details-btn { background: rgba(16,24,40,0.18); }
+  .app:not(.is-night) .mob-details-btn:active { background: rgba(16,24,40,0.3); }
   .stat { padding: 10px 8px; }
   .stat-label { font-size: 9px; letter-spacing: 0.14em; }
   .stat-val { font-size: 36px; }
@@ -1563,10 +1571,10 @@ button { font-family: inherit; }
     -webkit-backdrop-filter: blur(16px);
     box-sizing: border-box;
   }
-  /* Daytime: frosted clear glass so the live sky blurs through; night keeps
-     the dark glass above */
+  /* Daytime: tinted frosted glass so the live sky blurs through but white text
+     holds up on pale mornings; night keeps the dark glass above */
   .app:not(.is-night) .mob-hero-scrubber {
-    background: rgba(255,255,255,0.08);
+    background: rgba(16,24,40,0.26);
     border-color: rgba(255,255,255,0.22);
     box-shadow: 0 8px 32px rgba(0,0,0,0.12);
     backdrop-filter: blur(28px) saturate(150%);
@@ -1595,7 +1603,7 @@ button { font-family: inherit; }
     transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .mob-trend-pill.scrubbing {
-    transform: translate(-50%, calc(-50% - 34px)) scale(1.6);
+    transform: translate(-50%, calc(-50% - var(--pill-lift, 34px))) scale(1.6);
   }
   .app:not(.is-night) .mob-trend-pill {
     color: #0b1120;

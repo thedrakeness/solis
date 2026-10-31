@@ -107,3 +107,18 @@ export function describeConditions(precipProb: number, humidity: number, windSpe
   if (parts.length === 2) return `${first} with ${parts[1]}.`
   return `${first}, ${parts[1]}, and ${parts[2]}.`
 }
+
+let measureCtx: CanvasRenderingContext2D | null = null
+
+// Painted top and bottom of a single line of text, which sit well inside its line box
+export function glyphBounds(el: HTMLElement, text: string) {
+  const rect = el.getBoundingClientRect()
+  const cs = getComputedStyle(el)
+  const ctx = measureCtx ??= document.createElement('canvas').getContext('2d')
+  if (!ctx) return { top: rect.top, bottom: rect.bottom }
+  ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+  const m = ctx.measureText(text)
+  const lineH = parseFloat(cs.lineHeight) || rect.height
+  const baseline = rect.top + (lineH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent
+  return { top: baseline - m.actualBoundingBoxAscent, bottom: baseline + m.actualBoundingBoxDescent }
+}

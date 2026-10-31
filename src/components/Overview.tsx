@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { WeatherData, Unit, Tab, Location, Condition } from '../types'
-import { formatTemp, formatHour, isNightTod, todFromHour, condLabel, describeConditions } from '../lib/utils'
+import { formatTemp, formatHour, isNightTod, todFromHour, condLabel, describeConditions, glyphBounds } from '../lib/utils'
 import { Icons, CondIcon } from './Icons'
 import { LocationSearch } from './LocationSearch'
 import { MobileTimeScrubber } from './MobileTimeScrubber'
@@ -47,6 +47,17 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
     : null
 
   // Let the background scene preview the scrubbed hour
+  // The pill floats halfway between the condition label and the card's top edge
+  const condRef = useRef<HTMLSpanElement>(null)
+  const scrubbing = scrubIdx !== null
+  useLayoutEffect(() => {
+    const card = scrubberRef.current
+    const cond = condRef.current
+    if (!scrubbing || !card || !cond) return
+    const condBottom = glyphBounds(cond, cond.textContent ?? '').bottom
+    card.style.setProperty('--pill-lift', `${(card.getBoundingClientRect().top - condBottom) / 2 + card.clientTop}px`)
+  }, [scrubbing])
+
   const scrubbed = scrubIdx !== null ? next6[scrubIdx] : null
   useEffect(() => {
     onScrubChange?.(scrubbed ? { condition: scrubbed.condition, hour: scrubbed.hour } : null)
@@ -113,7 +124,7 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
                 <div>
                   <div className="ov-temp">{formatTemp(displayed.temp, unit)}<sup>°</sup></div>
                   <div className="ov-cond">
-                    <span className="ov-cond-label">{condLabel(displayed.condition)}</span>
+                    <span className="ov-cond-label" ref={condRef}>{condLabel(displayed.condition)}</span>
                     <span className="ov-cond-sep"> · </span>
                     {scrubLabel
                       ? <span className="ov-cond-feels">{scrubLabel}</span>
@@ -122,7 +133,7 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
                   </div>
                   <button
                     type="button"
-                    className="mob-details-btn"
+                    className={`mob-details-btn${scrubbing ? ' scrub-hidden' : ''}`}
                     onClick={() => setDetailsOpen(true)}
                     aria-haspopup="dialog"
                   >

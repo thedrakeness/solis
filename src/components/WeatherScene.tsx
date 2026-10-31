@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { Application } from '@splinetool/runtime'
 import type { Condition, TOD } from '../types'
 import { moonIllumination, moonPhase } from '../lib/moon'
+import { glyphBounds } from '../lib/utils'
 
 const Spline = lazy(() => import('@splinetool/react-spline'))
 
@@ -10,7 +11,7 @@ const SCENE_URL = 'https://prod.spline.design/UT9xI3COxa6CPtqv/scene.splinecode'
 
 // Spline objects whose states are named after a TOD / Condition value
 const TOD_OBJECTS = ['Sky Dome', 'SunRig', 'MoonRig', 'StarsTOD', 'Horizon Glow', 'SkyLight']
-const COND_OBJECTS = ['Sky Overcast', 'Sun', 'Moon', 'Stars', 'Lightning']
+const COND_OBJECTS = ['Sky Overcast', 'Sun Flare', 'Moon', 'Stars', 'Lightning']
 
 // Cloud groups stay in place; each material's opacity is bound to a scene
 // variable (0–100), so clouds fade in and out instead of scaling from the origin
@@ -52,15 +53,17 @@ function fadeClouds(app: Application, cond: Condition, duration: number, alphas:
 function applyState(app: Application, cond: Condition, tod: TOD, duration: number) {
   for (const name of TOD_OBJECTS) app.findObjectByName(name)?.transition({ to: tod, duration })
   for (const name of COND_OBJECTS) app.findObjectByName(name)?.transition({ to: cond, duration })
+  // Cloud cover hides the sun's rays (Sun Flare) but never shrinks the sun itself
+  app.findObjectByName('Sun')?.transition({ to: cond === 'partly' || cond === 'cloudy' ? 'clear' : cond, duration })
   const rain = app.findObjectByName('Rain')
   if (rain) rain.visible = cond === 'rain' || cond === 'storm'
   const snow = app.findObjectByName('Snow')
   if (snow) snow.visible = cond === 'snow'
 }
 
-// The moon is a Boolean: 'Moon Core' minus 'Moon Shadow' (a disc that takes a round
-// bite out of the dark side) and 'Moon Cutter' (an ellipse that hollows out a
-// crescent). Both
+// The lit moon is a Boolean: 'Moon Core' minus 'Moon Shadow' (a disc over the dark
+// side) and 'Moon Cutter' (an ellipse that hollows out a crescent). 'Moon Dark', a
+// dim full sphere just behind it, shows through as the shadowed part. Both cutters
 // carry states named phase-<shadow side l|r>-<percent lit>. Booleans only
 // recompute on state changes, not when a position is set from code.
 const PHASE_STEPS = [6, 15, 25, 35, 50, 65, 75, 85, 95, 100]
@@ -89,23 +92,9 @@ const BODIES = [
   // rigY/rigZ: the rig's resting height and depth (sun at midday, moon at night);
   // diameter: the unscaled disc in world units; fill: share of the gap it spans
   { name: 'SunBody', rigY: 470, rigZ: -300, diameter: 96, baseScale: 1.9, fill: 0.4 },
+  // The moon is sized by a fixed 104 reference disc, so resizing its glow leaves it unchanged
   { name: 'MoonBody', rigY: 470, rigZ: -300, diameter: 104, baseScale: 2.4, fill: 0.7 },
 ]
-
-let measureCtx: CanvasRenderingContext2D | null = null
-
-// Top edge of the temperature's digit glyphs, which sit well inside its line box
-function digitTop(el: HTMLElement) {
-  const cs = getComputedStyle(el)
-  const ctx = measureCtx ??= document.createElement('canvas').getContext('2d')
-  const text = el.firstChild?.textContent
-  if (!ctx || !text) return el.getBoundingClientRect().top
-  ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
-  const m = ctx.measureText(text)
-  const lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize)
-  const contentTop = el.getBoundingClientRect().top + (lineH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2
-  return contentTop + m.fontBoundingBoxAscent - m.actualBoundingBoxAscent
-}
 
 function placeBodies(app: Application) {
   const cam = app.findObjectByName('App Camera')
@@ -116,7 +105,7 @@ function placeBodies(app: Application) {
   // Measure as if the snap scroller were at the top: the canvas is fixed, the hero scrolls
   const scrollY = document.querySelector('.main--snap')?.scrollTop ?? 0
   const top = mobile ? loc.getBoundingClientRect().bottom + scrollY : 0
-  const bottom = mobile ? digitTop(temp) + scrollY : 0
+  const bottom = mobile ? glyphBounds(temp, temp.firstChild?.textContent ?? '').top + scrollY : 0
   const h = window.innerHeight
   for (const b of BODIES) {
     const body = app.findObjectByName(b.name)

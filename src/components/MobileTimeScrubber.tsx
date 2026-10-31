@@ -142,7 +142,7 @@ export function MobileTimeScrubber({ hours, unit, scrubIdx, onScrub }: Props) {
             x={xOf(i)}
             y={LABEL_Y}
             textAnchor="middle"
-            fill={scrubIdx === i ? `${ACCENT}0.9)` : 'rgba(255,255,255,0.38)'}
+            fill={scrubIdx === i ? `${ACCENT}0.9)` : 'rgba(255,255,255,0.75)'}
             fontSize="10"
             fontFamily="'IBM Plex Mono',monospace"
             letterSpacing="0.04em"
