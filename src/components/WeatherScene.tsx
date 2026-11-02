@@ -83,6 +83,29 @@ function applyMoonPhase(app: Application, lat: number) {
   if (body) body.rotation.z = ((side === 'r' ? -1 : 1) * MOON_TILT_DEG * Math.PI) / 180
 }
 
+// The two ray layers turn at different speeds so they slowly drift across each
+// other. This runs from code because the looping Spline states never advanced
+// the rotation, and any such loop on these objects would overwrite it each frame.
+const SPINNING_RAYS = [
+  { name: 'Sun Rays', secondsPerTurn: 150 },
+  { name: 'Sun Starburst B', secondsPerTurn: 230 },
+]
+
+function spinRays(app: Application) {
+  const rays = SPINNING_RAYS.map(r => {
+    const obj = app.findObjectByName(r.name)
+    return { obj, from: obj?.rotation.z ?? 0, speed: (2 * Math.PI) / (r.secondsPerTurn * 1000) }
+  })
+  const start = performance.now()
+  let id = 0
+  const step = (now: number) => {
+    for (const r of rays) if (r.obj) r.obj.rotation.z = r.from - r.speed * (now - start)
+    id = requestAnimationFrame(step)
+  }
+  id = requestAnimationFrame(step)
+  return () => cancelAnimationFrame(id)
+}
+
 // The camera's vertical FOV is fixed while the mobile hero is laid out in CSS,
 // so no single scene position lands the sun or moon in the same slot on every
 // phone. Instead, size and place each body (inside its rig) from the live
@@ -173,6 +196,11 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
   useEffect(() => {
     if (app.current) applyMoonPhase(app.current, lat)
   }, [lat, ready])
+
+  useEffect(() => {
+    if (!app.current || reducedMotion()) return
+    return spinRays(app.current)
+  }, [ready])
 
   // Re-fit the sun and moon whenever the hero's layout can shift
   useEffect(() => {
