@@ -55,6 +55,12 @@ button { font-family: inherit; }
 }
 .weather-scene.ready { opacity: 1; }
 .weather-scene canvas { width: 100% !important; height: 100% !important; display: block; }
+.weather-rain {
+  position: absolute; inset: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+.weather-rain.on { opacity: 1; }
 .sky::after {
   content: "";
   position: absolute; inset: 0;

@@ -4,6 +4,7 @@ import type { Application } from '@splinetool/runtime'
 import type { Condition, TOD } from '../types'
 import { moonIllumination, moonPhase } from '../lib/moon'
 import { glyphBounds } from '../lib/utils'
+import { RainDrops } from './RainDrops'
 
 const Spline = lazy(() => import('@splinetool/react-spline'))
 
@@ -26,6 +27,38 @@ const SKY_LAYERS: { object: string; variable: string; alpha: Partial<Record<Cond
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
 
+type RGB = { r: number; g: number; b: number }
+type CloudLight = { emissive: RGB }
+
+// Overcast shares its clouds with partly cloudy and snow, which stay grey, so
+// it turns them white by raising the glow on each sprite's lighting layer
+const OVERCAST_SPRITE = /^Cloud(Grey|Light) \d Vapor/
+const OVERCAST_GLOW = 0.6
+const cloudGlows = new WeakMap<Application, { light: CloudLight; base: RGB }[]>()
+
+function overcastGlows(app: Application) {
+  let glows = cloudGlows.get(app)
+  if (!glows) {
+    glows = []
+    for (const obj of app.getAllObjects()) {
+      if (!OVERCAST_SPRITE.test(obj.name)) continue
+      const layers = (obj as unknown as { material: { layers: { type: string }[] } }).material.layers
+      const light = layers.find(l => l.type === 'light') as unknown as CloudLight
+      glows.push({ light, base: light.emissive })
+    }
+    cloudGlows.set(app, glows)
+  }
+  return glows
+}
+
+function setOvercastWhite(app: Application, white: number) {
+  const mix = (from: number) => from + (OVERCAST_GLOW - from) * white
+  // Replaced whole: the runtime blanks the layer if a single channel is written
+  for (const { light, base } of overcastGlows(app)) {
+    light.emissive = { r: mix(base.r), g: mix(base.g), b: mix(base.b) }
+  }
+}
+
 // Fades from wherever each layer currently is, so scrubbing mid-fade never jumps
 function fadeSky(app: Application, cond: Condition, duration: number, alphas: Map<string, number>, frame: { id: number }) {
   cancelAnimationFrame(frame.id)
@@ -35,6 +68,8 @@ function fadeSky(app: Application, cond: Condition, duration: number, alphas: Ma
     from: alphas.get(l.variable) ?? 0,
     to: l.alpha[cond] ?? 0,
   }))
+  const whiteFrom = alphas.get('overcastWhite') ?? 0
+  const whiteTo = cond === 'cloudy' ? 1 : 0
   const start = performance.now()
   const step = (now: number) => {
     const t = duration > 0 ? Math.min(1, (now - start) / duration) : 1
@@ -47,6 +82,11 @@ function fadeSky(app: Application, cond: Condition, duration: number, alphas: Ma
       if (a > 0) l.obj?.show()
       else l.obj?.hide()
     }
+    if (whiteFrom !== whiteTo) {
+      const white = whiteFrom + (whiteTo - whiteFrom) * k
+      alphas.set('overcastWhite', white)
+      setOvercastWhite(app, white)
+    }
     if (t < 1) frame.id = requestAnimationFrame(step)
   }
   step(start)
@@ -57,9 +97,7 @@ function applyState(app: Application, cond: Condition, tod: TOD, duration: numbe
   for (const name of COND_OBJECTS) app.findObjectByName(name)?.transition({ to: cond, duration })
   // Cloud cover hides the sun's rays (Sun Flare) but never shrinks the sun itself
   app.findObjectByName('Sun')?.transition({ to: cond === 'partly' || cond === 'cloudy' ? 'clear' : cond, duration })
-  // The runtime can't see particle emitters, so each sits in a group it can
-  const rain = app.findObjectByName('RainFx')
-  if (rain) rain.visible = cond === 'rain' || cond === 'storm'
+  // The runtime can't see particle emitters, so snow sits in a group it can
   const snow = app.findObjectByName('SnowFx')
   if (snow) snow.visible = cond === 'snow'
 }
@@ -262,6 +300,7 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
           />
         </Suspense>
       </SceneBoundary>
+      <RainDrops active={ready && (cond === 'rain' || cond === 'storm')} heavy={cond === 'storm'} still={reducedMotion()} />
     </div>
   )
 }
