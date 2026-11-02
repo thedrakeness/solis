@@ -47,7 +47,7 @@ export default function App() {
   const [scrubPreview, setScrubPreview] = useState<{ condition: Condition; hour: number } | null>(null)
   const sceneTod = scrubPreview ? todFromHour(scrubPreview.hour) : tod
   const sceneCond = scrubPreview?.condition ?? currentCond
-  const sceneDay = !isNightTod(sceneTod)
+  const sceneDay = !isNightTod(sceneTod) && (sceneCond === 'clear' || sceneCond === 'partly')
   const skyDay = !night && currentCond !== 'rain' && currentCond !== 'storm'
   const tabTitle = TABS.find(t => t.key === tab)?.label ?? ''
   const dayStr = time.toLocaleDateString([], { weekday: 'short', timeZone }).toUpperCase()

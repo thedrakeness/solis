@@ -1561,8 +1561,8 @@ button { font-family: inherit; }
   }
   .mob-hero-group .ov-current-top { justify-content: flex-end; }
   /* Hero text matches the sky behind it, fading with the scene while scrubbing:
-     dark by day, white at dusk and night. The scene's clouds sit above the text,
-     but the CSS sky darkens all over in rain and storms, so white stays there */
+     dark on clear and partly cloudy days, white at dusk, at night and under the
+     scene's grey tint. The CSS sky only gets too dark for it in rain and storms */
   .scene-ready .app.scene-day .mob-hero-group,
   :root:not(.scene-ready) .app.sky-day .mob-hero-group {
     --hero-fg: #0b1120;
