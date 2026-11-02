@@ -46,6 +46,8 @@ export default function App() {
   const [scrubPreview, setScrubPreview] = useState<{ condition: Condition; hour: number } | null>(null)
   const sceneTod = scrubPreview ? todFromHour(scrubPreview.hour) : tod
   const sceneCond = scrubPreview?.condition ?? currentCond
+  const sceneDay = !isNightTod(sceneTod)
+  const skyDay = !night && currentCond !== 'rain' && currentCond !== 'storm'
   const tabTitle = TABS.find(t => t.key === tab)?.label ?? ''
   const dayStr = time.toLocaleDateString([], { weekday: 'short' }).toUpperCase()
   const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -87,7 +89,7 @@ export default function App() {
       )}
 
       {!loading && !error && weather && (
-        <div className={`app${night ? ' is-night' : ''}`}>
+        <div className={`app${night ? ' is-night' : ''}${sceneDay ? ' scene-day' : ''}${skyDay ? ' sky-day' : ''}`}>
           {/* Mobile top bar */}
           <div className="mobile-bar" style={{ background: skyTopColor(tod, currentCond) }}>
             <div className="mobile-brand">SOLIS</div>

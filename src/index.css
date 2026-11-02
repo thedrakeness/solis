@@ -1407,9 +1407,9 @@ button { font-family: inherit; }
     margin-top: 14px;
     padding: 8px 16px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.10);
-    border: 1px solid rgba(255,255,255,0.22);
-    color: #fff;
+    background: var(--hero-btn, rgba(255,255,255,0.10));
+    border: 1px solid var(--hero-btn-line, rgba(255,255,255,0.22));
+    color: var(--hero-fg, #fff);
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.16em;
@@ -1417,17 +1417,11 @@ button { font-family: inherit; }
     cursor: pointer;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    transition: background 0.15s, opacity 0.2s ease;
+    transition: background 0.15s, opacity 0.2s ease, color 1.2s, border-color 1.2s;
   }
-  .mob-details-btn:active { background: rgba(255,255,255,0.18); }
+  .mob-details-btn:active { background: var(--hero-btn-active, rgba(255,255,255,0.18)); }
   /* Clears the way for the floating time pill while scrubbing */
   .mob-details-btn.scrub-hidden { opacity: 0; pointer-events: none; }
-  /* Keeps white hero text legible over the pale morning sky */
-  .app:not(.is-night) .mob-overview .ov-temp,
-  .app:not(.is-night) .mob-overview .ov-cond,
-  .app:not(.is-night) .mob-details-btn { text-shadow: 0 1px 14px rgba(16,24,40,0.45); }
-  .app:not(.is-night) .mob-details-btn { background: rgba(16,24,40,0.18); }
-  .app:not(.is-night) .mob-details-btn:active { background: rgba(16,24,40,0.3); }
   .stat { padding: 10px 8px; }
   .stat-label { font-size: 9px; letter-spacing: 0.14em; }
   .stat-val { font-size: 36px; }
@@ -1560,6 +1554,20 @@ button { font-family: inherit; }
     padding-bottom: 20px;
   }
   .mob-hero-group .ov-current-top { justify-content: flex-end; }
+  /* Hero text matches the sky behind it, fading with the scene while scrubbing:
+     dark by day, white at dusk and night. The scene's clouds sit above the text,
+     but the CSS sky darkens all over in rain and storms, so white stays there */
+  .scene-ready .app.scene-day .mob-hero-group,
+  :root:not(.scene-ready) .app.sky-day .mob-hero-group {
+    --hero-fg: #0b1120;
+    --hero-btn: rgba(255,255,255,0.24);
+    --hero-btn-line: rgba(11,17,32,0.26);
+    --hero-btn-active: rgba(255,255,255,0.4);
+    --accent-rgb: 255, 255, 255;
+  }
+  .mob-overview .ov-temp,
+  .mob-overview .ov-temp sup { color: var(--hero-fg, #fff); transition: color 1.2s; }
+  .mob-overview .ov-cond { color: var(--hero-fg, rgba(255,255,255,0.88)); transition: color 1.2s; }
   .mob-hero-scrubber {
     position: relative;
     padding: 28px 18px 14px;
