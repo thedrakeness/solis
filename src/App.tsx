@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Tab, Unit, Location, Condition } from './types'
-import { todFromHour, isNightTod } from './lib/utils'
+import { hourInZone, todFromHour, isNightTod } from './lib/utils'
 import { skyTopColor } from './lib/sky'
 import { Sky } from './components/Sky'
 import GlyphLoader from './components/GlyphLoader'
@@ -39,8 +39,9 @@ export default function App() {
     return () => clearInterval(t)
   }, [])
 
-  const hour = time.getHours()
-  const tod = todFromHour(hour)
+  // The sky and clock follow the selected location, not this device
+  const timeZone = location.timezone || undefined
+  const tod = todFromHour(hourInZone(time, timeZone))
   const night = isNightTod(tod)
   const currentCond = weather?.current.condition ?? 'clear'
   const [scrubPreview, setScrubPreview] = useState<{ condition: Condition; hour: number } | null>(null)
@@ -49,8 +50,8 @@ export default function App() {
   const sceneDay = !isNightTod(sceneTod)
   const skyDay = !night && currentCond !== 'rain' && currentCond !== 'storm'
   const tabTitle = TABS.find(t => t.key === tab)?.label ?? ''
-  const dayStr = time.toLocaleDateString([], { weekday: 'short' }).toUpperCase()
-  const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const dayStr = time.toLocaleDateString([], { weekday: 'short', timeZone }).toUpperCase()
+  const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone })
 
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.tab, tab) }, [tab])
   useEffect(() => { localStorage.setItem(STORAGE_KEYS.unit, unit) }, [unit])

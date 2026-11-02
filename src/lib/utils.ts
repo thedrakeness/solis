@@ -13,6 +13,11 @@ export function todFromHour(hour: number): TOD {
   return 'night'
 }
 
+// The hour on the clock at a place rather than on this device
+export function hourInZone(date: Date, timeZone?: string): number {
+  return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone }).format(date))
+}
+
 export function isNightTod(tod: TOD): boolean {
   return tod === 'night' || tod === 'dusk'
 }

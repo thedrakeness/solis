@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { WeatherData, Unit, Tab, Location, Condition } from '../types'
-import { formatTemp, formatHour, isNightTod, todFromHour, condLabel, describeConditions, glyphBounds } from '../lib/utils'
+import { formatTemp, formatHour, hourInZone, isNightTod, todFromHour, condLabel, describeConditions, glyphBounds } from '../lib/utils'
 import { Icons, CondIcon } from './Icons'
 import { LocationSearch } from './LocationSearch'
 import { MobileTimeScrubber } from './MobileTimeScrubber'
@@ -75,7 +75,7 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
   const description = describeConditions(descSource.precipProb, current.humidity, descSource.windSpeed, current.windDir)
     ?? `Feels like ${formatTemp(current.feelsLike, unit)}°`
 
-  const night = isNightTod(todFromHour(new Date().getHours()))
+  const night = isNightTod(todFromHour(hourInZone(new Date(), location?.timezone || undefined)))
 
   const hourlyTiles = next6.map((h, i) => (
     <div key={i} className={`tile${i === 0 ? ' now' : ''}`}>

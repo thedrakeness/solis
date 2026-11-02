@@ -11,27 +11,29 @@ const SCENE_URL = 'https://prod.spline.design/UT9xI3COxa6CPtqv/scene.splinecode'
 
 // Spline objects whose states are named after a TOD / Condition value
 const TOD_OBJECTS = ['Sky Dome', 'SunRig', 'MoonRig', 'StarsTOD', 'Horizon Glow', 'SkyLight']
-const COND_OBJECTS = ['Sky Overcast', 'Sun Flare', 'Moon', 'Stars', 'Lightning']
+const COND_OBJECTS = ['Sun Flare', 'Moon', 'Stars', 'Lightning']
 
-// Cloud groups stay in place; each material's opacity is bound to a scene
-// variable (0–100), so clouds fade in and out instead of scaling from the origin
-const CLOUD_LAYERS: { group: string; variable: string; shown: Condition[] }[] = [
-  { group: 'CloudsDrift', variable: 'cloudsDriftAlpha', shown: ['clear', 'partly'] },
-  { group: 'CloudsLight', variable: 'cloudsLightAlpha', shown: ['partly', 'cloudy'] },
-  { group: 'CloudsGrey', variable: 'cloudsGreyAlpha', shown: ['cloudy', 'snow'] },
-  { group: 'CloudsDark', variable: 'cloudsDarkAlpha', shown: ['rain', 'storm'] },
+// Clouds and the sky's grey tint stay in place; each material's opacity is bound
+// to a scene variable (0–100), so they fade in and out instead of scaling from
+// the origin. Conditions a layer doesn't list leave it at 0.
+const SKY_LAYERS: { object: string; variable: string; alpha: Partial<Record<Condition, number>> }[] = [
+  { object: 'CloudsDrift', variable: 'cloudsDriftAlpha', alpha: { clear: 100, partly: 100 } },
+  { object: 'CloudsLight', variable: 'cloudsLightAlpha', alpha: { partly: 100, cloudy: 100 } },
+  { object: 'CloudsGrey', variable: 'cloudsGreyAlpha', alpha: { cloudy: 100, snow: 100 } },
+  { object: 'CloudsDark', variable: 'cloudsDarkAlpha', alpha: { rain: 100, storm: 100 } },
+  { object: 'Sky Overcast', variable: 'overcastAlpha', alpha: { cloudy: 55, rain: 70, storm: 85, snow: 50 } },
 ]
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
 
 // Fades from wherever each layer currently is, so scrubbing mid-fade never jumps
-function fadeClouds(app: Application, cond: Condition, duration: number, alphas: Map<string, number>, frame: { id: number }) {
+function fadeSky(app: Application, cond: Condition, duration: number, alphas: Map<string, number>, frame: { id: number }) {
   cancelAnimationFrame(frame.id)
-  const layers = CLOUD_LAYERS.map(l => ({
+  const layers = SKY_LAYERS.map(l => ({
     ...l,
-    obj: app.findObjectByName(l.group),
+    obj: app.findObjectByName(l.object),
     from: alphas.get(l.variable) ?? 0,
-    to: l.shown.includes(cond) ? 100 : 0,
+    to: l.alpha[cond] ?? 0,
   }))
   const start = performance.now()
   const step = (now: number) => {
@@ -41,7 +43,7 @@ function fadeClouds(app: Application, cond: Condition, duration: number, alphas:
       const a = l.from + (l.to - l.from) * k
       alphas.set(l.variable, a)
       app.setVariable(l.variable, a)
-      // Fully faded clouds are hidden so they cost nothing to draw
+      // Fully faded layers are hidden so they cost nothing to draw
       if (a > 0) l.obj?.show()
       else l.obj?.hide()
     }
@@ -55,9 +57,10 @@ function applyState(app: Application, cond: Condition, tod: TOD, duration: numbe
   for (const name of COND_OBJECTS) app.findObjectByName(name)?.transition({ to: cond, duration })
   // Cloud cover hides the sun's rays (Sun Flare) but never shrinks the sun itself
   app.findObjectByName('Sun')?.transition({ to: cond === 'partly' || cond === 'cloudy' ? 'clear' : cond, duration })
-  const rain = app.findObjectByName('Rain')
+  // The runtime can't see particle emitters, so each sits in a group it can
+  const rain = app.findObjectByName('RainFx')
   if (rain) rain.visible = cond === 'rain' || cond === 'storm'
-  const snow = app.findObjectByName('Snow')
+  const snow = app.findObjectByName('SnowFx')
   if (snow) snow.visible = cond === 'snow'
 }
 
@@ -181,17 +184,17 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
     return () => document.documentElement.classList.remove('scene-ready')
   }, [ready])
 
-  const cloudAlphas = useRef(new Map<string, number>())
-  const cloudFrame = useRef({ id: 0 })
+  const skyAlphas = useRef(new Map<string, number>())
+  const skyFrame = useRef({ id: 0 })
 
   useEffect(() => {
     if (!app.current) return
     const duration = reducedMotion() ? 0 : 1200
     applyState(app.current, cond, tod, duration)
-    fadeClouds(app.current, cond, duration, cloudAlphas.current, cloudFrame.current)
+    fadeSky(app.current, cond, duration, skyAlphas.current, skyFrame.current)
   }, [cond, tod, ready])
 
-  useEffect(() => () => cancelAnimationFrame(cloudFrame.current.id), [])
+  useEffect(() => () => cancelAnimationFrame(skyFrame.current.id), [])
 
   useEffect(() => {
     if (app.current) applyMoonPhase(app.current, lat)
@@ -252,7 +255,7 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
             onLoad={(a) => {
               app.current = a
               applyState(a, cond, tod, 0)
-              fadeClouds(a, cond, 0, cloudAlphas.current, cloudFrame.current)
+              fadeSky(a, cond, 0, skyAlphas.current, skyFrame.current)
               placeBodies(a)
               setReady(true)
             }}

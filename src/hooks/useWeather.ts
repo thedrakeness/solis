@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Location, Unit, WeatherData } from '../types'
 import { fetchWeather } from '../lib/api'
 import { REFRESH_INTERVAL_MS } from '../constants'
@@ -15,17 +15,22 @@ export function useWeather(location: Location, unit: Unit): UseWeatherResult {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Only the newest request may report back, so a slow response for the
+  // previous location can't overwrite the one the user just picked
+  const latest = useRef(0)
+
   const load = useCallback(async () => {
+    const request = ++latest.current
     setLoading(true)
     setError(null)
     try {
       const data = await fetchWeather(location, unit === 'F' ? 'fahrenheit' : 'celsius')
-      setWeather(data)
+      if (request === latest.current) setWeather(data)
     } catch (e) {
-      setError('Unable to load weather data. Check your connection and try again.')
+      if (request === latest.current) setError('Unable to load weather data. Check your connection and try again.')
       console.error(e)
     } finally {
-      setLoading(false)
+      if (request === latest.current) setLoading(false)
     }
   }, [location, unit])
 
