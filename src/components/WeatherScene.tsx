@@ -59,6 +59,57 @@ function setOvercastWhite(app: Application, white: number) {
   }
 }
 
+type SceneLayer = { type: string; color: RGB; alpha: number; emissive: RGB }
+const sceneLayers = (app: Application, name: string) =>
+  (app.findObjectByName(name) as unknown as { material: { layers: SceneLayer[] } } | undefined)?.material.layers ?? []
+
+// The corona's looping state swings its scale, which reads as a pulsing ring
+// once the rays no longer cover it, so it only shows alongside the rays
+const CORONA_ALPHA = 0.99
+
+function setCorona(app: Application, shown: number) {
+  const corona = app.findObjectByName('Sun Corona')
+  const layer = sceneLayers(app, 'Sun Corona').find(l => l.type === 'color')
+  if (layer) layer.alpha = CORONA_ALPHA * shown
+  if (corona) corona.visible = shown > 0
+}
+
+// Each ray is a stack of copies fanned out around 'Sun Starburst' (degrees)
+const RAY_FAN: Record<string, number> = {
+  'Sun Starburst Wide L': 1.4,
+  'Sun Starburst Wide R': -1.4,
+  'Sun Starburst Wide L2': 2.8,
+  'Sun Starburst Wide R2': -2.8,
+}
+
+const SUN_RIMS = [
+  { r: 1, g: 0.71, b: 0.42 },
+  { r: 1, g: 0.83, b: 0.55 },
+  { r: 1, g: 0.9, b: 0.69 },
+]
+
+// Colour writes before the sun's first frame can leave its disc undrawn
+function styleSunAfterFirstFrame(app: Application) {
+  let id = requestAnimationFrame(() => { id = requestAnimationFrame(() => styleSun(app)) })
+  return () => cancelAnimationFrame(id)
+}
+
+function styleSun(app: Application) {
+  for (const [name, deg] of Object.entries(RAY_FAN)) {
+    const ray = app.findObjectByName(name)
+    if (ray) ray.rotation.z = (deg * Math.PI) / 180
+  }
+  const core = sceneLayers(app, 'Sun Core')
+  core.filter(l => l.type === 'fresnel').forEach((l, i) => { l.color = SUN_RIMS[i] })
+  for (const l of core) {
+    if (l.type === 'color') l.color = { r: 1, g: 0.94, b: 0.76 }
+    if (l.type === 'light') l.emissive = { r: 0.78, g: 0.63, b: 0.38 }
+  }
+  for (const l of sceneLayers(app, 'Sun Corona')) {
+    if (l.type === 'color') l.color = { r: 1, g: 0.87, b: 0.66 }
+  }
+}
+
 // Fades from wherever each layer currently is, so scrubbing mid-fade never jumps
 function fadeSky(app: Application, cond: Condition, duration: number, alphas: Map<string, number>, frame: { id: number }) {
   cancelAnimationFrame(frame.id)
@@ -70,6 +121,8 @@ function fadeSky(app: Application, cond: Condition, duration: number, alphas: Ma
   }))
   const whiteFrom = alphas.get('overcastWhite') ?? 0
   const whiteTo = cond === 'cloudy' ? 1 : 0
+  const coronaFrom = alphas.get('sunCorona') ?? 1
+  const coronaTo = cond === 'clear' ? 1 : 0
   const start = performance.now()
   const step = (now: number) => {
     const t = duration > 0 ? Math.min(1, (now - start) / duration) : 1
@@ -87,6 +140,9 @@ function fadeSky(app: Application, cond: Condition, duration: number, alphas: Ma
       alphas.set('overcastWhite', white)
       setOvercastWhite(app, white)
     }
+    const shown = coronaFrom + (coronaTo - coronaFrom) * k
+    alphas.set('sunCorona', shown)
+    setCorona(app, shown)
     if (t < 1) frame.id = requestAnimationFrame(step)
   }
   step(start)
@@ -241,6 +297,10 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
   useEffect(() => {
     if (!app.current || reducedMotion()) return
     return spinRays(app.current)
+  }, [ready])
+
+  useEffect(() => {
+    if (app.current) return styleSunAfterFirstFrame(app.current)
   }, [ready])
 
   // Re-fit the sun and moon whenever the hero's layout can shift
