@@ -39,30 +39,6 @@ export function todAt(iso: string, sun?: SunTimes[]): TOD {
   return 'night'
 }
 
-// How far the sun and moon are across the sky, from -1 (just risen, far left)
-// through 0 (halfway, centred) to 1 (setting, far right). Each holds at an end
-// while it's down, on the side it will next appear from or just left by.
-export function skyArc(iso: string, sun?: SunTimes[]): { sun: number; moon: number } {
-  const i = sun?.findIndex(d => d.sunset.startsWith(iso.slice(0, 10))) ?? -1
-  const day = sun?.[i]
-  let rise = day ? minutesIntoDay(day.sunrise) : 0
-  let set = day ? minutesIntoDay(day.sunset) : 0
-  // Polar days and nights follow the clock fallback's 6am to 8pm
-  const known = set > rise
-  if (!known) { rise = 360; set = 1200 }
-  const t = minutesIntoDay(iso)
-  const across = (from: number, to: number) => Math.min(1, Math.max(-1, ((t - from) / (to - from)) * 2 - 1))
-  if (t < rise) {
-    const prevSet = known && sun?.[i - 1] ? minutesIntoDay(sun[i - 1].sunset) : set
-    return { sun: -1, moon: across(prevSet - 1440, rise) }
-  }
-  if (t >= set) {
-    const nextRise = known && sun?.[i + 1] ? minutesIntoDay(sun[i + 1].sunrise) : rise
-    return { sun: 1, moon: across(set, nextRise + 1440) }
-  }
-  return { sun: across(rise, set), moon: t < (rise + set) / 2 ? 1 : -1 }
-}
-
 // The time on the clock at a place rather than on this device, in the API's format
 export function localIso(date: Date, timeZone?: string): string {
   return new Intl.DateTimeFormat('sv-SE', { dateStyle: 'short', timeStyle: 'short', timeZone }).format(date).replace(' ', 'T')

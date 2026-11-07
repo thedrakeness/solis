@@ -215,18 +215,14 @@ function spinRays(app: Application) {
 const CAMERA_FOV = 45
 const BODIES = [
   // rigY/rigZ: the rig's resting height and depth (sun at midday, moon at night);
-  // diameter: the unscaled disc in world units; fill: share of the gap it spans;
-  // disc: what must stay on screen at the ends of its arc
-  { name: 'SunBody', rig: 'SunRig', rigY: 470, rigZ: -300, diameter: 96, disc: 96, baseScale: 1.9, fill: 0.4 },
+  // diameter: the unscaled disc in world units; fill: share of the gap it spans
+  { name: 'SunBody', rig: 'SunRig', rigY: 470, rigZ: -300, diameter: 96, baseScale: 1.9, fill: 0.4 },
   // The moon is sized by a fixed 104 reference disc, so resizing its glow leaves it unchanged
-  { name: 'MoonBody', rig: 'MoonRig', rigY: 470, rigZ: -300, diameter: 104, disc: 66, baseScale: 2.4, fill: 0.7 },
+  { name: 'MoonBody', rig: 'MoonRig', rigY: 470, rigZ: -300, diameter: 104, baseScale: 2.4, fill: 0.7 },
 ]
 
-// How far each body may travel either side of centre (world units), so it stays
-// on screen at the ends of its arc; capped so on desktop it never slides behind
-// the temperature
-const MAX_REACH_PX = 120
-const bodyReach = new WeakMap<Application, Record<string, number>>()
+// Each body's fitted height inside its rig, before holdBodies' correction
+const bodyY = new WeakMap<Application, Record<string, number>>()
 
 function placeBodies(app: Application) {
   const cam = app.findObjectByName('App Camera')
@@ -239,50 +235,46 @@ function placeBodies(app: Application) {
   const top = mobile ? loc.getBoundingClientRect().bottom + scrollY : 0
   const bottom = mobile ? glyphBounds(temp, temp.firstChild?.textContent ?? '').top + scrollY : 0
   const h = window.innerHeight
-  const w = window.innerWidth
-  const reach: Record<string, number> = {}
+  const ys: Record<string, number> = {}
   for (const b of BODIES) {
     const body = app.findObjectByName(b.name)
     if (!body) continue
-    const worldPerPx = (2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (cam.position.z - b.rigZ)) / h
     let y = 0
     let scale = b.baseScale
-    // Desktop keeps the scene's authored height and size
+    // Desktop keeps the scene's authored placement
     if (mobile) {
+      const worldPerPx = (2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (cam.position.z - b.rigZ)) / h
       y = cam.position.y + (h / 2 - (top + bottom) / 2) * worldPerPx - b.rigY
       scale = Math.max(b.baseScale, ((bottom - top) * b.fill * worldPerPx) / b.diameter)
     }
+    ys[b.name] = y
     body.position.y = y
     body.scale.x = body.scale.y = body.scale.z = scale
-    const radiusPx = (b.disc * scale) / 2 / worldPerPx
-    reach[b.name] = Math.max(0, Math.min(MAX_REACH_PX, w / 2 - radiusPx - 16)) * worldPerPx
   }
-  bodyReach.set(app, reach)
+  bodyY.set(app, ys)
 }
 
-// Slides the sun and moon across the sky with the time of day, centred halfway
-// between rise and set. Written every frame because the rigs' own states move
-// them sideways too (a small authored arc), which this cancels so the body sits
-// exactly where its time puts it. Scrubbing glides rather than jumps.
-function driftBodies(app: Application, arcs: { current: Record<string, number> }, glide: boolean) {
-  const bodies = BODIES.map(b => ({
-    name: b.name,
-    body: app.findObjectByName(b.name),
-    rig: app.findObjectByName(b.rig),
-    at: arcs.current[b.name] ?? 0,
-  }))
-  let last = performance.now()
+// While up, the rigs' states still drift a little across the sky (x within ±40,
+// y 440–470 between morning and afternoon). Cancelling that keeps the sun and
+// moon fixed in the centre the whole time they're out. The correction is capped
+// at that band, so bigger moves (rising and setting) still play out.
+const HOLD_X = 40
+const HOLD_DROP = 30
+
+function holdBodies(app: Application) {
+  const bodies = BODIES.map(b => ({ b, body: app.findObjectByName(b.name), rig: app.findObjectByName(b.rig) }))
   let id = 0
-  const step = (now: number) => {
-    const k = glide ? Math.min(1, (now - last) / 350) : 1
-    last = now
-    const reach = bodyReach.get(app) ?? {}
-    for (const b of bodies) {
-      if (!b.body || !b.rig) continue
-      b.at += ((arcs.current[b.name] ?? 0) - b.at) * k
-      const scale = b.rig.scale.x
+  const step = () => {
+    const ys = bodyY.get(app) ?? {}
+    for (const { b, body, rig } of bodies) {
+      if (!body || !rig) continue
+      const scale = rig.scale.x
       // A rig scaled to nothing is hidden, and dividing by it would blow up
-      if (Math.abs(scale) > 0.01) b.body.position.x = (b.at * (reach[b.name] ?? 0) - b.rig.position.x) / scale
+      if (Math.abs(scale) < 0.01) continue
+      const dx = -Math.min(HOLD_X, Math.max(-HOLD_X, rig.position.x))
+      const dy = Math.min(HOLD_DROP, Math.max(0, b.rigY - rig.position.y))
+      body.position.x = dx / scale
+      body.position.y = (ys[b.name] ?? 0) + dy / scale
     }
     id = requestAnimationFrame(step)
   }
@@ -308,14 +300,7 @@ async function hasWebGPU() {
 }
 
 // 3D sky layered over the CSS <Sky>, which stays as the fallback while loading
-export function WeatherScene({ tod, cond, lat, sunArc, moonArc }: {
-  tod: TOD
-  cond: Condition
-  lat: number
-  // -1 (rising, left) to 1 (setting, right); see skyArc
-  sunArc: number
-  moonArc: number
-}) {
+export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; lat: number }) {
   const app = useRef<Application | null>(null)
   const [ready, setReady] = useState(false)
   const [supported, setSupported] = useState(false)
@@ -357,10 +342,8 @@ export function WeatherScene({ tod, cond, lat, sunArc, moonArc }: {
     if (app.current) return styleSunAfterFirstFrame(app.current)
   }, [ready])
 
-  const arcs = useRef<Record<string, number>>({})
-  arcs.current = { SunBody: sunArc, MoonBody: moonArc }
   useEffect(() => {
-    if (app.current) return driftBodies(app.current, arcs, !reducedMotion())
+    if (app.current) return holdBodies(app.current)
   }, [ready])
 
   // Re-fit the sun and moon whenever the hero's layout can shift
