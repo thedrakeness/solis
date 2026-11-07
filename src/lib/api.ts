@@ -51,7 +51,7 @@ export async function fetchWeather(loc: Location, unitTemp: 'fahrenheit' | 'cels
     longitude: String(loc.lon),
     current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
     hourly: 'temperature_2m,precipitation_probability,weather_code,wind_speed_10m',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset',
     temperature_unit: unitTemp,
     wind_speed_unit: 'mph',
     precipitation_unit: 'inch',
@@ -112,6 +112,8 @@ export async function fetchWeather(loc: Location, unitTemp: 'fahrenheit' | 'cels
     }
   })
 
+  const sun = (daily.sunrise as string[]).map((sunrise, i) => ({ sunrise, sunset: daily.sunset[i] as string }))
+
   const precipProb = hours[1]?.precipProb ?? hours[0]?.precipProb ?? 0
 
   const current = {
@@ -128,7 +130,7 @@ export async function fetchWeather(loc: Location, unitTemp: 'fahrenheit' | 'cels
   }
 
   const { weeklyHighs, weeklyPrecip, monthlySummary } = await fetchTrends(loc, unitTemp)
-  return { current, hours, days, weeklyHighs, weeklyPrecip, monthlySummary }
+  return { current, hours, days, sun, weeklyHighs, weeklyPrecip, monthlySummary }
 }
 
 async function fetchTrends(loc: Location, unitTemp: 'fahrenheit' | 'celsius'): Promise<{

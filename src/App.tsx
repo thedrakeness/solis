@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Tab, Unit, Location, Condition } from './types'
-import { hourInZone, todFromHour, isNightTod } from './lib/utils'
+import { localIso, todAt, isNightTod, skyArc } from './lib/utils'
 import { skyTopColor } from './lib/sky'
 import { Sky } from './components/Sky'
 import GlyphLoader from './components/GlyphLoader'
@@ -41,11 +41,13 @@ export default function App() {
 
   // The sky and clock follow the selected location, not this device
   const timeZone = location.timezone || undefined
-  const tod = todFromHour(hourInZone(time, timeZone))
+  const now = localIso(time, timeZone)
+  const tod = todAt(now, weather?.sun)
   const night = isNightTod(tod)
   const currentCond = weather?.current.condition ?? 'clear'
-  const [scrubPreview, setScrubPreview] = useState<{ condition: Condition; hour: number } | null>(null)
-  const sceneTod = scrubPreview ? todFromHour(scrubPreview.hour) : tod
+  const [scrubPreview, setScrubPreview] = useState<{ condition: Condition; isoTime: string } | null>(null)
+  const sceneTod = scrubPreview ? todAt(scrubPreview.isoTime, weather?.sun) : tod
+  const sceneArc = skyArc(scrubPreview?.isoTime ?? now, weather?.sun)
   const sceneCond = scrubPreview?.condition ?? currentCond
   const sceneDay = !isNightTod(sceneTod) && (sceneCond === 'clear' || sceneCond === 'partly')
   const skyDay = !night && currentCond !== 'rain' && currentCond !== 'storm'
@@ -72,7 +74,7 @@ export default function App() {
   return (
     <>
       <Sky tod={tod} cond={currentCond} />
-      <WeatherScene tod={sceneTod} cond={sceneCond} lat={location.lat} />
+      <WeatherScene tod={sceneTod} cond={sceneCond} lat={location.lat} sunArc={sceneArc.sun} moonArc={sceneArc.moon} />
 
       {loading && (
         <div className="center-state">

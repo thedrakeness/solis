@@ -54,10 +54,17 @@ export interface MonthSummary {
   rainRel: number
 }
 
+// Local times at the location, one entry per forecast day
+export interface SunTimes {
+  sunrise: string
+  sunset: string
+}
+
 export interface WeatherData {
   current: CurrentData
   hours: HourData[]
   days: DayData[]
+  sun: SunTimes[]
   weeklyHighs: { label: string; value: number; isCurrent: boolean }[]
   weeklyPrecip: { label: string; value: number; isCurrent: boolean }[]
   monthlySummary: MonthSummary[]

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import type { CurrentData, Unit } from '../types'
-import { formatTemp } from '../lib/utils'
+import type { CurrentData, SunTimes, Unit } from '../types'
+import { formatClock, formatTemp } from '../lib/utils'
 
 interface Props {
   open: boolean
@@ -9,17 +9,21 @@ interface Props {
   current: CurrentData
   // Wind/precip follow the scrubbed hour when one is selected
   displayed: CurrentData
+  sun: SunTimes
   timeLabel: string
   unit: Unit
 }
 
-export function MobileDetailsSheet({ open, onClose, current, displayed, timeLabel, unit }: Props) {
+export function MobileDetailsSheet({ open, onClose, current, displayed, sun, timeLabel, unit }: Props) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
+
+  // Polar days and nights have no usable pair
+  const hasSunTimes = sun.sunset > sun.sunrise
 
   const rows = [
     {
@@ -47,6 +51,16 @@ export function MobileDetailsSheet({ open, onClose, current, displayed, timeLabe
       value: `${displayed.precipProb}%`,
       note: timeLabel,
     },
+    {
+      label: 'Sunrise',
+      value: hasSunTimes ? formatClock(sun.sunrise) : 'N/A',
+      note: null,
+    },
+    {
+      label: 'Sundown',
+      value: hasSunTimes ? formatClock(sun.sunset) : 'N/A',
+      note: null,
+    },
   ]
 
   // Portaled to body: the page-enter animation leaves a transform on the
@@ -68,8 +82,7 @@ export function MobileDetailsSheet({ open, onClose, current, displayed, timeLabe
       >
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <span className="sheet-title">Details · {timeLabel}</span>
-          <button className="sheet-close" onClick={onClose} aria-label="Close">×</button>
+          <span className="sheet-title">Details</span>
         </div>
         <dl className="details-list">
           {rows.map(r => (

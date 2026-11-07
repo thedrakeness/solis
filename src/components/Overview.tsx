@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { WeatherData, Unit, Tab, Location, Condition } from '../types'
-import { formatTemp, formatHour, hourInZone, isNightTod, todFromHour, condLabel, describeConditions, glyphBounds } from '../lib/utils'
+import { formatTemp, formatHour, isNightTod, localIso, todAt, condLabel, describeConditions, glyphBounds } from '../lib/utils'
 import { Icons, CondIcon } from './Icons'
 import { LocationSearch } from './LocationSearch'
 import { MobileTimeScrubber } from './MobileTimeScrubber'
@@ -13,7 +13,7 @@ interface Props {
   onGoTab: (tab: Tab) => void
   location?: Location
   onSelectLocation?: (loc: Location) => void
-  onScrubChange?: (preview: { condition: Condition; hour: number } | null) => void
+  onScrubChange?: (preview: { condition: Condition; isoTime: string } | null) => void
 }
 
 export function Overview({ data, unit, onGoTab, location, onSelectLocation, onScrubChange }: Props) {
@@ -60,8 +60,8 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
 
   const scrubbed = scrubIdx !== null ? next6[scrubIdx] : null
   useEffect(() => {
-    onScrubChange?.(scrubbed ? { condition: scrubbed.condition, hour: scrubbed.hour } : null)
-  }, [scrubbed?.condition, scrubbed?.hour, onScrubChange])
+    onScrubChange?.(scrubbed ? { condition: scrubbed.condition, isoTime: scrubbed.isoTime } : null)
+  }, [scrubbed?.condition, scrubbed?.isoTime, onScrubChange])
   useEffect(() => () => onScrubChange?.(null), [onScrubChange])
 
   const [descIdx, setDescIdx] = useState<number | null>(null)
@@ -75,7 +75,7 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
   const description = describeConditions(descSource.precipProb, current.humidity, descSource.windSpeed, current.windDir)
     ?? `Feels like ${formatTemp(current.feelsLike, unit)}°`
 
-  const night = isNightTod(todFromHour(hourInZone(new Date(), location?.timezone || undefined)))
+  const night = isNightTod(todAt(localIso(new Date(), location?.timezone || undefined), data.sun))
 
   const hourlyTiles = next6.map((h, i) => (
     <div key={i} className={`tile${i === 0 ? ' now' : ''}`}>
@@ -194,6 +194,7 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
           onClose={() => setDetailsOpen(false)}
           current={current}
           displayed={displayed}
+          sun={data.sun[0]}
           timeLabel={scrubLabel ?? 'Now'}
           unit={unit}
         />

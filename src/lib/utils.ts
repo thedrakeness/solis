@@ -1,6 +1,7 @@
-import type { Condition, TOD, Unit } from '../types'
+import type { Condition, SunTimes, TOD, Unit } from '../types'
 
-export function todFromHour(hour: number): TOD {
+// A rough sky for when a place's sun times aren't known
+function todFromHour(hour: number): TOD {
   if (hour >= 5 && hour < 6) return 'dawn'
   if (hour >= 6 && hour < 7) return 'sunrise'
   if (hour >= 7 && hour < 9) return 'morning'
@@ -13,9 +14,58 @@ export function todFromHour(hour: number): TOD {
   return 'night'
 }
 
-// The hour on the clock at a place rather than on this device
-export function hourInZone(date: Date, timeZone?: string): number {
-  return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone }).format(date))
+const minutesIntoDay = (iso: string) => Number(iso.slice(11, 13)) * 60 + Number(iso.slice(14, 16))
+
+// The sky for a local time at a place. Stages are anchored to that day's sunrise
+// and sunset, so the sun is gone at sunset whatever the season or location.
+// Polar days and nights have no usable pair, so they follow the clock.
+export function todAt(iso: string, sun?: SunTimes[]): TOD {
+  const day = sun?.find(d => d.sunset.startsWith(iso.slice(0, 10)))
+  const rise = day ? minutesIntoDay(day.sunrise) : 0
+  const set = day ? minutesIntoDay(day.sunset) : 0
+  if (set <= rise) return todFromHour(Number(iso.slice(11, 13)))
+  const t = minutesIntoDay(iso)
+  const length = set - rise
+  if (t < rise - 40) return 'night'
+  if (t < rise) return 'dawn'
+  if (t < rise + 45) return 'sunrise'
+  if (t < rise + length * 0.2) return 'morning'
+  if (t < rise + length * 0.35) return 'latemorning'
+  if (t < rise + length * 0.65) return 'midday'
+  if (t < set - 90) return 'afternoon'
+  if (t < set - 30) return 'golden'
+  if (t < set) return 'evening'
+  if (t < set + 40) return 'dusk'
+  return 'night'
+}
+
+// How far the sun and moon are across the sky, from -1 (just risen, far left)
+// through 0 (halfway, centred) to 1 (setting, far right). Each holds at an end
+// while it's down, on the side it will next appear from or just left by.
+export function skyArc(iso: string, sun?: SunTimes[]): { sun: number; moon: number } {
+  const i = sun?.findIndex(d => d.sunset.startsWith(iso.slice(0, 10))) ?? -1
+  const day = sun?.[i]
+  let rise = day ? minutesIntoDay(day.sunrise) : 0
+  let set = day ? minutesIntoDay(day.sunset) : 0
+  // Polar days and nights follow the clock fallback's 6am to 8pm
+  const known = set > rise
+  if (!known) { rise = 360; set = 1200 }
+  const t = minutesIntoDay(iso)
+  const across = (from: number, to: number) => Math.min(1, Math.max(-1, ((t - from) / (to - from)) * 2 - 1))
+  if (t < rise) {
+    const prevSet = known && sun?.[i - 1] ? minutesIntoDay(sun[i - 1].sunset) : set
+    return { sun: -1, moon: across(prevSet - 1440, rise) }
+  }
+  if (t >= set) {
+    const nextRise = known && sun?.[i + 1] ? minutesIntoDay(sun[i + 1].sunrise) : rise
+    return { sun: 1, moon: across(set, nextRise + 1440) }
+  }
+  return { sun: across(rise, set), moon: t < (rise + set) / 2 ? 1 : -1 }
+}
+
+// The time on the clock at a place rather than on this device, in the API's format
+export function localIso(date: Date, timeZone?: string): string {
+  return new Intl.DateTimeFormat('sv-SE', { dateStyle: 'short', timeStyle: 'short', timeZone }).format(date).replace(' ', 'T')
 }
 
 export function isNightTod(tod: TOD): boolean {
@@ -31,6 +81,12 @@ export function formatHour(h: number): string {
   if (h === 0) return '12 AM'
   if (h === 12) return '12 PM'
   return h < 12 ? `${h} AM` : `${h - 12} PM`
+}
+
+// Reads the clock from the API's local time, so it stays the location's time
+export function formatClock(iso: string): string {
+  const [hour, period] = formatHour(Number(iso.slice(11, 13))).split(' ')
+  return `${hour}:${iso.slice(14, 16)} ${period}`
 }
 
 export function formatTempUnit(f: number, unit: Unit): string {
