@@ -55,6 +55,12 @@ button { font-family: inherit; }
 }
 .weather-scene.ready { opacity: 1; }
 .weather-scene canvas { width: 100% !important; height: 100% !important; display: block; }
+/* Celestial-chart linework over the canvas, under the UI */
+.sky-chart { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* The dial and its ring of dots drift very slowly in opposite directions */
+.sky-chart-turn { animation: spin 180s linear infinite; }
+.sky-chart-turn--back { animation-duration: 260s; animation-direction: reverse; }
+@media (prefers-reduced-motion: reduce) { .sky-chart-turn { animation: none; } }
 .weather-rain {
   position: absolute; inset: 0;
   opacity: 0;
@@ -880,30 +886,35 @@ button { font-family: inherit; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Mobile loader: nested spinning glyphs */
+/* Mobile loader: an astrolabe in the night chart's line language */
 .glyph-loader { display: none; }
 @media (max-width: 768px) {
   .center-state .spinner { display: none; }
   .glyph-loader {
     display: block;
-    width: 132px; height: 132px;
+    width: 140px; height: 140px;
     overflow: visible;
-    filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.45));
+    filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.3));
   }
 }
-.glyph-loader * { fill: none; stroke: var(--highlight); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.glyph-loader * { fill: none; stroke: var(--highlight); stroke-width: 0.7; stroke-linecap: round; stroke-linejoin: round; }
 .gl-layer { transform-box: view-box; transform-origin: 0 0; animation: spin linear infinite; }
-/* Neighbouring layers alternate direction, outside in */
-.gl-arcs { animation-duration: 4s; }
-.gl-arcs circle { stroke-dasharray: 60 97.08; }
-.gl-hex { animation-duration: 8s; animation-direction: reverse; }
-.gl-oct { animation-duration: 6s; }
-.gl-square { animation-duration: 4s; animation-direction: reverse; }
-.gl-core { animation-duration: 1.6s; }
-.gl-core circle { stroke-dasharray: 20 36.55; }
-.gl-dot { fill: var(--highlight); stroke: none; }
+.gl-meridian { stroke-dasharray: 0 3.2; stroke-width: 1; opacity: 0.55; }
+.gl-ring { opacity: 0.8; }
+.gl-dial { animation-duration: 40s; opacity: 0.85; }
+.gl-dial line { stroke-width: 0.5; }
+.gl-dots { animation-duration: 24s; animation-direction: reverse; }
+.gl-dots circle { stroke-width: 1.3; stroke-dasharray: 0 4.6; }
+/* The stack swings about the centre rather than spinning */
+.gl-stack { animation: gl-swing 3.2s ease-in-out infinite alternate; opacity: 0.75; }
+@keyframes gl-swing { from { transform: rotate(-28deg); } to { transform: rotate(28deg); } }
+.gl-orbit-a { animation-duration: 3s; }
+.gl-orbit-b { animation-duration: 5s; animation-direction: reverse; }
+.gl-orbit-c { animation-duration: 7.5s; }
+.glyph-loader .gl-body { fill: var(--highlight); stroke: none; }
 @media (prefers-reduced-motion: reduce) {
-  .gl-layer { animation-duration: 40s; }
+  .gl-layer { animation-duration: 60s; }
+  .gl-stack { animation: none; }
 }
 .state-txt {
   font-size: 12px;
