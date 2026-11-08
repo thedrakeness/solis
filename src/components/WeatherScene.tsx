@@ -6,7 +6,7 @@ import { moonIllumination, moonPhase } from '../lib/moon'
 import { glyphBounds, isNightTod } from '../lib/utils'
 import { RainDrops } from './RainDrops'
 import { SkyChart } from './SkyChart'
-import type { MoonSlot } from './SkyChart'
+import type { BodySlot } from './SkyChart'
 
 const Spline = lazy(() => import('@splinetool/react-spline'))
 
@@ -226,14 +226,16 @@ const BODIES = [
 // Each body's fitted height inside its rig, before holdBodies' correction
 const bodyY = new WeakMap<Application, Record<string, number>>()
 
-// The lit disc ('Moon Core') inside the moon's 104 reference disc, in world units
-const MOON_CORE = 64
+// Each body's visible disc ('Sun Core', 'Moon Core') in world units, before scaling
+const CORE: Record<string, number> = { SunBody: 96, MoonBody: 64 }
 
-// The 'Moon' states hide it behind rain, storm and snow cover; the chart hangs off it
-const MOON_OUT: Condition[] = ['clear', 'partly', 'cloudy']
+// Rain, storm and snow cover hide the bodies, so the chart stops masking a disc that isn't there
+const BODY_OUT: Condition[] = ['clear', 'partly', 'cloudy']
 
-// Returns where the moon's disc lands on screen (mobile only), for the chart overlay
-function placeBodies(app: Application): MoonSlot | null {
+type Slots = Record<string, BodySlot>
+
+// Returns where each body's disc lands on screen (mobile only), for the chart overlay
+function placeBodies(app: Application): Slots | null {
   const cam = app.findObjectByName('App Camera')
   if (!cam) return null
   const loc = document.querySelector<HTMLElement>('.mob-snap-hero .mob-loc-inline')
@@ -245,7 +247,7 @@ function placeBodies(app: Application): MoonSlot | null {
   const bottom = mobile ? glyphBounds(temp, temp.firstChild?.textContent ?? '').top + scrollY : 0
   const h = window.innerHeight
   const ys: Record<string, number> = {}
-  let slot: MoonSlot | null = null
+  const slots: Slots = {}
   for (const b of BODIES) {
     const body = app.findObjectByName(b.name)
     if (!body) continue
@@ -256,16 +258,14 @@ function placeBodies(app: Application): MoonSlot | null {
       const worldPerPx = (2 * Math.tan((CAMERA_FOV * Math.PI) / 360) * (cam.position.z - b.rigZ)) / h
       y = cam.position.y + (h / 2 - (top + bottom) / 2) * worldPerPx - b.rigY
       scale = Math.max(b.baseScale, ((bottom - top) * b.fill * worldPerPx) / b.diameter)
-      if (b.name === 'MoonBody') {
-        slot = { x: window.innerWidth / 2, y: (top + bottom) / 2, r: (MOON_CORE * scale) / worldPerPx / 2 }
-      }
+      slots[b.name] = { x: window.innerWidth / 2, y: (top + bottom) / 2, r: (CORE[b.name] * scale) / worldPerPx / 2 }
     }
     ys[b.name] = y
     body.position.y = y
     body.scale.x = body.scale.y = body.scale.z = scale
   }
   bodyY.set(app, ys)
-  return slot
+  return mobile ? slots : null
 }
 
 // While up, the rigs' states still drift a little across the sky (x within ±40,
@@ -318,7 +318,7 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
   const app = useRef<Application | null>(null)
   const [ready, setReady] = useState(false)
   const [supported, setSupported] = useState(false)
-  const [moonSlot, setMoonSlot] = useState<MoonSlot | null>(null)
+  const [slots, setSlots] = useState<Slots | null>(null)
 
   useEffect(() => {
     let live = true
@@ -364,7 +364,7 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
   // Re-fit the sun and moon whenever the hero's layout can shift
   useEffect(() => {
     if (!ready) return
-    const fit = () => { if (app.current) setMoonSlot(placeBodies(app.current)) }
+    const fit = () => { if (app.current) setSlots(placeBodies(app.current)) }
     const ro = new ResizeObserver(fit)
     // The hero mounts once the forecast loads and unmounts on other tabs
     let hero: Element | null = null
@@ -402,6 +402,11 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
 
   if (!supported) return null
 
+  // The chart centres on the moon by night and the sun by day
+  const night = isNightTod(tod)
+  const chartBody = slots?.[night ? 'MoonBody' : 'SunBody']
+  const bodyOut = BODY_OUT.includes(cond) && tod !== 'dawn'
+
   return (
     <div className={`weather-scene${ready ? ' ready' : ''}`} aria-hidden="true">
       <SceneBoundary>
@@ -412,13 +417,15 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
               app.current = a
               applyState(a, cond, tod, 0)
               fadeSky(a, cond, tod, 0, skyAlphas.current, skyFrame.current)
-              setMoonSlot(placeBodies(a))
+              setSlots(placeBodies(a))
               setReady(true)
             }}
           />
         </Suspense>
       </SceneBoundary>
-      {ready && moonSlot && isNightTod(tod) && MOON_OUT.includes(cond) && <SkyChart moon={moonSlot} />}
+      {ready && chartBody && (
+        <SkyChart body={chartBody} masked={bodyOut} day={!night} />
+      )}
       <RainDrops active={ready && (cond === 'rain' || cond === 'storm')} heavy={cond === 'storm'} still={reducedMotion()} />
     </div>
   )
