@@ -51,7 +51,7 @@ export function FiveDay({ data, unit }: Props) {
           {days.map((d, i) => (
             <g key={i}>
               <circle cx={x(i)} cy={y(d.hi)} r="2.5" fill="#fff" />
-              <text x={x(i)} y={y(d.hi) - 11} fill="#fff" fontSize="14" fontWeight="500" textAnchor="middle" fontFamily="IBM Plex Mono">
+              <text x={x(i)} y={y(d.hi) - 11} style={{ fill: 'var(--fg)' }} fontSize="14" fontWeight="500" textAnchor="middle" fontFamily="IBM Plex Mono">
                 {formatTemp(d.hi, unit)}°
               </text>
               <circle cx={x(i)} cy={y(d.lo)} r="2" style={{ fill: 'rgba(var(--accent-rgb),0.85)' }} />

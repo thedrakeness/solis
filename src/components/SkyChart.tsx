@@ -68,10 +68,8 @@ export function SkyChart({ body, masked, day }: { body: BodySlot; masked: boolea
     const deg = i * 2
     return { a: polar(c, limbIn, deg), b: polar(c, i % 5 === 0 ? limbOut : limbIn + 3.5, deg) }
   })
-  // Spokes between the dial and the ring of dots
-  const spokes = Array.from({ length: 24 }, (_, i) => ({ a: polar(c, limbOut + 4, i * 15), b: polar(c, dotR - 5, i * 15) }))
-  // Circles that touch the dial at its top; the larger hangs down to the card
-  const stack = [limbOut * 1.3, Math.max((bottom - top) / 2, limbOut * 1.6)].map(r => ({ r, cy: top + r }))
+  // A circle that touches the dial at its top and hangs down to the card
+  const hang = Math.max((bottom - top) / 2, limbOut * 1.6)
 
   // Construction lines fan out from a point well above the screen down to the card
   const apex = { x: c.x + W * 0.06, y: -H * 0.45 }
@@ -87,12 +85,6 @@ export function SkyChart({ body, masked, day }: { body: BodySlot; masked: boolea
     at(crossing(apex, rays[1], c, dotR, 'lower'), 'open'),
     at(crossing(apex, rays[1], c, ring, 'upper'), 'double'),
   ].filter((p): p is Node => !!p && p.x > 8 && p.x < W - 8 && p.y > TOP_CLEAR && p.y < bottom)
-
-  // Small diamond glyphs: a row up left, a lattice down right
-  const diamonds = [
-    ...[0, 1, 2, 3].map(i => ({ x: 26 + i * 9, y: top + 6 })),
-    ...[0, 1, 2].flatMap(i => [0, 1, 2].map(j => ({ x: W - 46 + i * 8, y: c.y + limbOut * 0.95 + j * 8 }))),
-  ]
 
   // Full strength from the top of the screen, easing out just above the card
   const stop = (y: number) => Math.min(1, Math.max(0, y / H))
@@ -115,16 +107,10 @@ export function SkyChart({ body, masked, day }: { body: BodySlot; masked: boolea
           <circle cx={c.x} cy={c.y} r={ring} />
           {rays.map((p, i) => <line key={i} x1={apex.x} y1={apex.y} x2={p.x} y2={p.y} />)}
         </g>
-        <g opacity="0.08">
-          {stack.map(s => <circle key={s.r} cx={c.x} cy={s.cy} r={s.r} />)}
-        </g>
+        <circle cx={c.x} cy={top + hang} r={hang} opacity="0.08" />
         <circle cx={c.x} cy={c.y} r={family} opacity="0.1" />
         <line x1="0" y1={c.y} x2={W} y2={c.y} opacity="0.09" />
         <line x1={c.x} y1="0" x2={c.x} y2={bottom} opacity="0.2" strokeWidth="1.3" strokeDasharray="0 6" />
-        <g opacity="0.06">
-          {spokes.map((t, i) => <line key={i} x1={t.a.x} y1={t.a.y} x2={t.b.x} y2={t.b.y} />)}
-        </g>
-        <circle cx={c.x} cy={c.y} r={limbIn} opacity="0.14" />
         <circle cx={c.x} cy={c.y} r={limbOut} opacity="0.14" />
         <g opacity="0.12" strokeWidth="0.55">
           {ticks.map((t, i) => <line key={i} x1={t.a.x} y1={t.a.y} x2={t.b.x} y2={t.b.y} />)}
@@ -140,9 +126,6 @@ export function SkyChart({ body, masked, day }: { body: BodySlot; masked: boolea
         </g>
         <g opacity="0.26" fill={ink} stroke="none">
           {nodes.filter(p => p.kind === 'body').map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="2.4" />)}
-        </g>
-        <g opacity="0.2" fill={ink} stroke="none">
-          {diamonds.map((d, i) => <path key={i} d={`M${d.x} ${d.y - 2.6}l2.6 2.6-2.6 2.6-2.6-2.6z`} />)}
         </g>
       </g>
     </svg>

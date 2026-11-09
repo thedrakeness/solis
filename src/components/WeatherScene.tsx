@@ -14,7 +14,7 @@ const SCENE_URL = 'https://prod.spline.design/UT9xI3COxa6CPtqv/scene.splinecode'
 
 // Spline objects whose states are named after a TOD / Condition value
 const TOD_OBJECTS = ['Sky Dome', 'SunRig', 'MoonRig', 'StarsTOD', 'Horizon Glow', 'SkyLight']
-const COND_OBJECTS = ['Moon', 'Stars', 'Lightning']
+const COND_OBJECTS = ['Moon', 'Lightning']
 
 // Clouds and the sky's grey tint stay in place; each material's opacity is bound
 // to a scene variable (0–100), so they fade in and out instead of scaling from
@@ -59,6 +59,29 @@ function setCloudsWhite(app: Application, white: number) {
   // Replaced whole: the runtime blanks the layer if a single channel is written
   for (const { light, base } of whiteGlows(app)) {
     light.emissive = { r: mix(base.r), g: mix(base.g), b: mix(base.b) }
+  }
+}
+
+// Overcast nights keep the stars where they are but dull them. The runtime ignores
+// colour and alpha writes on their material, so each star shrinks instead, which
+// at their size reads as fainter.
+const STAR = /^Star \d+$/
+const STAR_DULL = 0.55
+type Scale = { x: number; y: number; z: number }
+const starScales = new WeakMap<Application, { scale: Scale; base: Scale }[]>()
+
+function setStarsBright(app: Application, bright: number) {
+  let stars = starScales.get(app)
+  if (!stars) {
+    stars = app.getAllObjects()
+      .filter(obj => STAR.test(obj.name))
+      .map(obj => ({ scale: obj.scale, base: { x: obj.scale.x, y: obj.scale.y, z: obj.scale.z } }))
+    starScales.set(app, stars)
+  }
+  for (const { scale, base } of stars) {
+    scale.x = base.x * bright
+    scale.y = base.y * bright
+    scale.z = base.z * bright
   }
 }
 
@@ -126,6 +149,8 @@ function fadeSky(app: Application, cond: Condition, tod: TOD, duration: number, 
   const sunny = (cond === 'clear' || cond === 'partly') && !isNightTod(tod)
   const whiteTo = cond === 'cloudy' || sunny ? 1 : 0
   const coronaFrom = alphas.get('sunCorona') ?? 1
+  const starsFrom = alphas.get('starsBright') ?? 1
+  const starsTo = cond === 'cloudy' ? STAR_DULL : 1
   const coronaTo = cond === 'clear' ? 1 : 0
   const start = performance.now()
   const step = (now: number) => {
@@ -147,10 +172,18 @@ function fadeSky(app: Application, cond: Condition, tod: TOD, duration: number, 
     const shown = coronaFrom + (coronaTo - coronaFrom) * k
     alphas.set('sunCorona', shown)
     setCorona(app, shown)
+    if (starsFrom !== starsTo) {
+      const bright = starsFrom + (starsTo - starsFrom) * k
+      alphas.set('starsBright', bright)
+      setStarsBright(app, bright)
+    }
     if (t < 1) frame.id = requestAnimationFrame(step)
   }
   step(start)
 }
+
+// Which body is in the sky: the moon by night, nothing before sunrise, the sun by day
+const bodyUp = (t: TOD) => (isNightTod(t) ? 'moon' : t === 'dawn' ? 'none' : 'sun')
 
 function applyState(app: Application, cond: Condition, tod: TOD, duration: number) {
   for (const name of TOD_OBJECTS) app.findObjectByName(name)?.transition({ to: tod, duration })
@@ -160,6 +193,8 @@ function applyState(app: Application, cond: Condition, tod: TOD, duration: numbe
   app.findObjectByName('Sun Flare')?.transition({ to: sunUp ? cond : 'storm', duration })
   // Cloud cover hides the sun's rays (Sun Flare) but never shrinks the sun itself
   app.findObjectByName('Sun')?.transition({ to: !sunUp ? 'storm' : cond === 'partly' || cond === 'cloudy' ? 'clear' : cond, duration })
+  // Overcast leaves the stars in place (dulled in fadeSky); heavier weather still clears them away
+  app.findObjectByName('Stars')?.transition({ to: cond === 'cloudy' ? 'clear' : cond, duration })
   // The runtime can't see particle emitters, so snow sits in a group it can
   const snow = app.findObjectByName('SnowFx')
   if (snow) snow.visible = cond === 'snow'
@@ -335,9 +370,14 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
   const skyAlphas = useRef(new Map<string, number>())
   const skyFrame = useRef({ id: 0 })
 
+  // Swapping the sun for the moon (or back) is quicker than other changes, so
+  // scrubbing across dusk or dawn keeps up with the finger
+  const lastBody = useRef(bodyUp(tod))
   useEffect(() => {
     if (!app.current) return
-    const duration = reducedMotion() ? 0 : 1200
+    const swap = bodyUp(tod) !== lastBody.current
+    lastBody.current = bodyUp(tod)
+    const duration = reducedMotion() ? 0 : swap ? 450 : 1200
     applyState(app.current, cond, tod, duration)
     fadeSky(app.current, cond, tod, duration, skyAlphas.current, skyFrame.current)
   }, [cond, tod, ready])

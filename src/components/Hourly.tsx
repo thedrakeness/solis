@@ -70,7 +70,7 @@ export function Hourly({ data, unit }: Props) {
           <path d={fillD} fill="url(#tempFill)" />
           <path d={pathD} fill="none" style={{ stroke: 'var(--accent-bright)' }} strokeWidth="1.5" strokeLinecap="round" />
           <circle cx={x(hiIdx)} cy={y(temps[hiIdx])} r="3" fill="#fff" />
-          <text x={x(hiIdx)} y={y(temps[hiIdx]) - 10} fill="#fff" fontSize="11" textAnchor="middle" fontFamily="IBM Plex Mono">
+          <text x={x(hiIdx)} y={y(temps[hiIdx]) - 10} style={{ fill: 'var(--fg)' }} fontSize="11" textAnchor="middle" fontFamily="IBM Plex Mono">
             {formatTemp(temps[hiIdx], unit)}°
           </text>
           <circle cx={x(loIdx)} cy={y(temps[loIdx])} r="3" style={{ fill: 'rgba(var(--accent-rgb),0.85)' }} />
