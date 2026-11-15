@@ -1734,3 +1734,27 @@ button { font-family: inherit; }
   color: var(--fg-dim);
 }
 .phone-only-host { color: #fff; font-weight: 500; white-space: nowrap; }
+
+/* ---- Rolling temperature: mechanical counter digits ---- */
+.roll { display: inline; font-variant-numeric: tabular-nums lining-nums; }
+.roll-slot { display: inline-block; }
+.roll-slot.rolling {
+  position: relative;
+  /* Window onto the drum: clipped to the line box, edges shaded like a curved wheel */
+  clip-path: inset(0 -0.2em);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
+}
+.roll-slot.rolling .roll-sizer { visibility: hidden; }
+.roll-strip { position: absolute; top: 0; left: 0; right: 0; text-align: center; }
+.roll-strip > span { display: block; }
+/* Quick throw with a small overshoot that settles back, like a detent clicking home */
+.roll-slot.up .roll-strip { animation: roll-up 300ms cubic-bezier(0.3, 1.45, 0.55, 1) var(--roll-delay, 0ms) both; }
+.roll-slot.down .roll-strip { animation: roll-down 300ms cubic-bezier(0.3, 1.45, 0.55, 1) var(--roll-delay, 0ms) both; }
+@keyframes roll-up { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+@keyframes roll-down { from { transform: translateY(-50%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .roll-strip { display: none; }
+  .roll-slot.rolling { -webkit-mask-image: none; mask-image: none; }
+  .roll-slot.rolling .roll-sizer { visibility: visible; }
+}

@@ -6,6 +6,7 @@ import { Icons, CondIcon } from './Icons'
 import { LocationSearch } from './LocationSearch'
 import { MobileTimeScrubber } from './MobileTimeScrubber'
 import { MobileDetailsSheet } from './MobileDetailsSheet'
+import { RollingNumber } from './RollingNumber'
 
 interface Props {
   data: WeatherData
@@ -122,7 +123,7 @@ export function Overview({ data, unit, onGoTab, location, onSelectLocation, onSc
             <div className="mob-hero-group">
               <div className="ov-current-top">
                 <div>
-                  <div className="ov-temp">{formatTemp(displayed.temp, unit)}<sup>°</sup></div>
+                  <div className="ov-temp"><RollingNumber value={formatTemp(displayed.temp, unit)} /><sup>°</sup></div>
                   <div className="ov-cond">
                     <span className="ov-cond-label" ref={condRef}>{condLabel(displayed.condition)}</span>
                     <span className="ov-cond-sep"> · </span>
