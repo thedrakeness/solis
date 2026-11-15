@@ -13,6 +13,13 @@ function blend(hex1: string, hex2: string, t: number): string {
   return `#${[r,g,bl].map(v => v.toString(16).padStart(2,'0')).join('')}`
 }
 
+// How much daylight reaches the sky (0 at night, 1 through the day), for
+// weather that greys the sky lighter by day and darker by night
+export const DAYLIGHT: Record<TOD, number> = {
+  night: 0, dusk: 0.3, dawn: 0.3, sunrise: 0.6, evening: 0.6, golden: 0.85,
+  morning: 1, latemorning: 1, midday: 1, afternoon: 1,
+}
+
 // Mirrors the Sky Dome gradient in the Spline scene: pale, faded mornings that
 // deepen to cobalt at midday, then amber golden hour and ember/magenta sunsets
 function skyColors(tod: TOD, cond: Condition): { top: string; mid: string; bot: string; glow: string } {
@@ -29,10 +36,15 @@ function skyColors(tod: TOD, cond: Condition): { top: string; mid: string; bot: 
     case 'dusk':        top='#0f1038'; mid='#38205e'; bot='#8a3f78'; glow='#c2406a'; break
     default:            top='#040618'; mid='#0a0f30'; bot='#141a4a'; glow='#2148a0'; break
   }
+  // Overcast and rain fade toward grey: soft and light by day, a deep grey by
+  // night, and in between through dawn and dusk
+  const grey = (day: string, night: string) => blend(night, day, DAYLIGHT[tod])
   if (cond === 'cloudy') {
-    top = blend(top,'#2e3848',0.4); mid = blend(mid,'#4a5568',0.4); bot = blend(bot,'#66717f',0.4); glow = blend(glow,'#8a94a3',0.5)
+    top = blend(top, grey('#8e959e', '#15171b'), 0.75); mid = blend(mid, grey('#a9afb7', '#1d2024'), 0.75)
+    bot = blend(bot, grey('#c3c8ce', '#272a2f'), 0.75); glow = blend(glow, grey('#dde1e6', '#3a3e45'), 0.6)
   } else if (cond === 'rain') {
-    top = blend(top,'#161f2e',0.55); mid = blend(mid,'#2c3848',0.55); bot = blend(bot,'#43505f',0.55); glow = blend(glow,'#5a6878',0.65)
+    top = blend(top, grey('#5d646d', '#0d0f12'), 0.75); mid = blend(mid, grey('#737a83', '#16191d'), 0.75)
+    bot = blend(bot, grey('#8b9199', '#22262b'), 0.75); glow = blend(glow, grey('#a4aab2', '#343941'), 0.6)
   } else if (cond === 'storm') {
     top = blend(top,'#080c16',0.7); mid = blend(mid,'#1a1f30',0.7); bot = blend(bot,'#2a2840',0.65); glow = blend(glow,'#5a4a7a',0.6)
   } else if (cond === 'snow') {

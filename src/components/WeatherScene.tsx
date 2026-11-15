@@ -4,6 +4,7 @@ import type { Application } from '@splinetool/runtime'
 import type { Condition, TOD } from '../types'
 import { moonIllumination, moonPhase } from '../lib/moon'
 import { glyphBounds, isNightTod } from '../lib/utils'
+import { DAYLIGHT } from '../lib/sky'
 import { RainDrops } from './RainDrops'
 import { SkyChart } from './SkyChart'
 import type { BodySlot } from './SkyChart'
@@ -24,7 +25,7 @@ const SKY_LAYERS: { object: string; variable: string; alpha: Partial<Record<Cond
   { object: 'CloudsLight', variable: 'cloudsLightAlpha', alpha: { partly: 100, cloudy: 100 } },
   { object: 'CloudsGrey', variable: 'cloudsGreyAlpha', alpha: { cloudy: 100, snow: 100 } },
   { object: 'CloudsDark', variable: 'cloudsDarkAlpha', alpha: { rain: 100, storm: 100 } },
-  { object: 'Sky Overcast', variable: 'overcastAlpha', alpha: { cloudy: 55, rain: 70, storm: 85, snow: 50 } },
+  { object: 'Sky Overcast', variable: 'overcastAlpha', alpha: { cloudy: 90, rain: 90, storm: 85, snow: 50 } },
 ]
 
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2)
@@ -37,22 +38,30 @@ type CloudLight = { emissive: RGB }
 // layer. The drift clouds are left out: writing to them stops the sky rendering.
 const WHITE_SPRITE = /^Cloud(Grey|Light) \d Vapor/
 const WHITE_GLOW = 0.6
-const cloudGlows = new WeakMap<Application, { light: CloudLight; base: RGB }[]>()
+type Glow = { light: CloudLight; base: RGB }
+const NO_GLOW: RGB = { r: 0, g: 0, b: 0 }
+const glowCache = new WeakMap<Application, Map<RegExp, Glow[]>>()
 
-function whiteGlows(app: Application) {
-  let glows = cloudGlows.get(app)
+// The lighting layer of every object whose name matches, with its authored glow
+function lightLayers(app: Application, match: RegExp) {
+  let byMatch = glowCache.get(app)
+  if (!byMatch) glowCache.set(app, (byMatch = new Map()))
+  let glows = byMatch.get(match)
   if (!glows) {
     glows = []
     for (const obj of app.getAllObjects()) {
-      if (!WHITE_SPRITE.test(obj.name)) continue
-      const layers = (obj as unknown as { material: { layers: { type: string }[] } }).material.layers
-      const light = layers.find(l => l.type === 'light') as unknown as CloudLight
-      glows.push({ light, base: light.emissive })
+      if (!match.test(obj.name)) continue
+      const layers = (obj as unknown as { material?: { layers: { type: string }[] } }).material?.layers ?? []
+      const light = layers.find(l => l.type === 'light') as unknown as CloudLight | undefined
+      // An unset glow renders as none
+      if (light) glows.push({ light, base: { ...(light.emissive ?? NO_GLOW) } })
     }
-    cloudGlows.set(app, glows)
+    byMatch.set(match, glows)
   }
   return glows
 }
+
+const whiteGlows = (app: Application) => lightLayers(app, WHITE_SPRITE)
 
 function setCloudsWhite(app: Application, white: number) {
   const mix = (from: number) => from + (WHITE_GLOW - from) * white
@@ -85,6 +94,66 @@ function setStarsBright(app: Application, bright: number) {
   }
 }
 
+// The overcast tint is a lit layer, so the runtime ignores its colour; its glow
+// sets how light the grey reads. Overcast and rain are a soft grey by day that
+// deepens to a dark grey at night. Storm and snow keep the scene's own glow.
+const OVERCAST = /^Sky Overcast$/
+const OVERCAST_GLOW: Partial<Record<Condition, { day: number; night: number }>> = {
+  cloudy: { day: 0.6, night: 0.14 },
+  rain: { day: 0.5, night: 0.12 },
+}
+// Rain clouds lift from near black to slate by day; storm clouds stay dark
+const RAIN_CLOUD = /^CloudDark \d Vapor/
+const RAIN_CLOUD_DAY_GLOW = 0.3
+
+const grey = (v: number): RGB => ({ r: v, g: v, b: v + 0.015 })
+const mixRGB = (a: RGB, b: RGB, t: number): RGB => ({ r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t })
+
+// A glow written while the renderer is compiling shaders can break a shader for
+// good: the tint vanishes and THREE.TSL logs 'Uniform "null"'. So glows are only
+// written on frames when no compile is in flight, and not at all until the burst
+// of compiles after load has settled. If the runtime stops reporting its compile
+// state, a fixed delay after load stands in.
+type Renderer = { lastFrameIncomplete?: boolean; _compilationHasWork?: boolean }
+const rendererOf = (app: Application) => (app as unknown as { _renderer?: Renderer })._renderer
+
+function compiling(app: Application) {
+  const r = rendererOf(app)
+  return !!(r?.lastFrameIncomplete || r?._compilationHasWork)
+}
+
+const settledScenes = new WeakSet<Application>()
+const SETTLED_FRAMES = 30
+const SETTLED_FALLBACK_MS = 1500
+
+function afterShadersSettle(app: Application, run: () => void) {
+  const reports = typeof rendererOf(app)?.lastFrameIncomplete === 'boolean'
+  const start = performance.now()
+  let calm = 0
+  let id = 0
+  const step = (now: number) => {
+    calm = compiling(app) ? 0 : calm + 1
+    if (reports ? calm >= SETTLED_FRAMES : now - start >= SETTLED_FALLBACK_MS) run()
+    else id = requestAnimationFrame(step)
+  }
+  id = requestAnimationFrame(step)
+  return () => cancelAnimationFrame(id)
+}
+
+type GlowFade = { light: CloudLight; from: RGB; to: RGB }
+
+// Fades each layer from the glow it has now, so a change mid-fade never jumps
+function glowFades(glows: Glow[], to: (base: RGB) => RGB): GlowFade[] {
+  return glows
+    .map(({ light, base }) => ({ light, from: { ...(light.emissive ?? base) }, to: to(base) }))
+    .filter(f => f.from.r !== f.to.r || f.from.g !== f.to.g || f.from.b !== f.to.b)
+}
+
+function stepGlows(fades: GlowFade[], k: number) {
+  // Replaced whole: the runtime blanks the layer if a single channel is written
+  for (const f of fades) f.light.emissive = mixRGB(f.from, f.to, k)
+}
+
 type SceneLayer = { type: string; color: RGB; alpha: number; emissive: RGB }
 const sceneLayers = (app: Application, name: string) =>
   (app.findObjectByName(name) as unknown as { material: { layers: SceneLayer[] } } | undefined)?.material.layers ?? []
@@ -113,12 +182,6 @@ const SUN_RIMS = [
   { r: 1, g: 0.83, b: 0.55 },
   { r: 1, g: 0.9, b: 0.69 },
 ]
-
-// Colour writes before the sun's first frame can leave its disc undrawn
-function styleSunAfterFirstFrame(app: Application) {
-  let id = requestAnimationFrame(() => { id = requestAnimationFrame(() => styleSun(app)) })
-  return () => cancelAnimationFrame(id)
-}
 
 function styleSun(app: Application) {
   for (const [name, deg] of Object.entries(RAY_FAN)) {
@@ -152,6 +215,14 @@ function fadeSky(app: Application, cond: Condition, tod: TOD, duration: number, 
   const starsFrom = alphas.get('starsBright') ?? 1
   const starsTo = cond === 'cloudy' ? STAR_DULL : 1
   const coronaTo = cond === 'clear' ? 1 : 0
+  const daylight = DAYLIGHT[tod]
+  const overcast = OVERCAST_GLOW[cond]
+  const glows = !settledScenes.has(app) ? [] : [
+    ...glowFades(lightLayers(app, OVERCAST), base =>
+      overcast ? mixRGB(grey(overcast.night), grey(overcast.day), daylight) : base),
+    ...glowFades(lightLayers(app, RAIN_CLOUD), base =>
+      cond === 'rain' ? mixRGB(base, grey(RAIN_CLOUD_DAY_GLOW), daylight) : base),
+  ]
   const start = performance.now()
   const step = (now: number) => {
     const t = duration > 0 ? Math.min(1, (now - start) / duration) : 1
@@ -160,14 +231,21 @@ function fadeSky(app: Application, cond: Condition, tod: TOD, duration: number, 
       const a = l.from + (l.to - l.from) * k
       alphas.set(l.variable, a)
       app.setVariable(l.variable, a)
-      // Fully faded layers are hidden so they cost nothing to draw
-      if (a > 0) l.obj?.show()
+      // Fully faded layers are hidden so they cost nothing to draw. Until the
+      // scene settles they're all drawn, so every shader is built before any
+      // glow is written: one built after a glow write breaks
+      if (a > 0 || !settledScenes.has(app)) l.obj?.show()
       else l.obj?.hide()
     }
-    if (whiteFrom !== whiteTo) {
-      const white = whiteFrom + (whiteTo - whiteFrom) * k
-      alphas.set('cloudsWhite', white)
-      setCloudsWhite(app, white)
+    // Held back while shaders compile, then caught up to where the fade is
+    if (!glowsDone && !compiling(app)) {
+      stepGlows(glows, k)
+      if (whiteFrom !== whiteTo) {
+        const white = whiteFrom + (whiteTo - whiteFrom) * k
+        alphas.set('cloudsWhite', white)
+        setCloudsWhite(app, white)
+      }
+      glowsDone = t >= 1
     }
     const shown = coronaFrom + (coronaTo - coronaFrom) * k
     alphas.set('sunCorona', shown)
@@ -177,8 +255,10 @@ function fadeSky(app: Application, cond: Condition, tod: TOD, duration: number, 
       alphas.set('starsBright', bright)
       setStarsBright(app, bright)
     }
-    if (t < 1) frame.id = requestAnimationFrame(step)
+    if (t < 1 || !glowsDone) frame.id = requestAnimationFrame(step)
   }
+  // Whitening the clouds is a glow write too, so it follows the same rules
+  let glowsDone = !settledScenes.has(app) || (glows.length === 0 && whiteFrom === whiteTo)
   step(start)
 }
 
@@ -393,9 +473,22 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
     return spinRays(app.current)
   }, [ready])
 
-  useEffect(() => {
-    if (app.current) return styleSunAfterFirstFrame(app.current)
-  }, [ready])
+  // The sun's colours and the grey tints wait for the shaders to settle, then
+  // ease into the current sky. Tied to each loaded
+  // scene, since a remount loads a new one
+  const latest = useRef({ cond, tod })
+  latest.current = { cond, tod }
+  const cancelLoadSteps = useRef(() => {})
+  useEffect(() => () => cancelLoadSteps.current(), [])
+  const afterLoad = (a: Application) => {
+    cancelLoadSteps.current()
+    cancelLoadSteps.current = afterShadersSettle(a, () => {
+      if (app.current !== a) return
+      styleSun(a)
+      settledScenes.add(a)
+      fadeSky(a, latest.current.cond, latest.current.tod, reducedMotion() ? 0 : 400, skyAlphas.current, skyFrame.current)
+    })
+  }
 
   useEffect(() => {
     if (app.current) return holdBodies(app.current)
@@ -459,6 +552,7 @@ export function WeatherScene({ tod, cond, lat }: { tod: TOD; cond: Condition; la
               fadeSky(a, cond, tod, 0, skyAlphas.current, skyFrame.current)
               setSlots(placeBodies(a))
               setReady(true)
+              afterLoad(a)
             }}
           />
         </Suspense>
